@@ -1,0 +1,2 @@
+
+! wb is obviously faster than w - in 3 times!

@@ -1,0 +1,2 @@
+$charset = (48..57) + (65..90) + (97..122)
+(1..1MB|%{-join ($charset | Get-Random -Count 512 | ForEach-Object {[char]$_})})>test.txt
