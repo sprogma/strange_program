@@ -13,6 +13,6 @@ $Table | % {$id = 0}{
 
 $Table | % {[pscustomobject]@{Program=$_.Program; Average=$_.Time.Average; Minimum=$_.Time.Minimum; Maximum=$_.Time.Maximum}}
 
-& {gnuplot plot.gp; Write-Output "Generated $outPng"} || Write-Error "Failed to run gnuplot."
+& {gnuplot plot.gp; Write-Output "Generated result.png"} || Write-Error "Failed to run gnuplot."
 
 popd

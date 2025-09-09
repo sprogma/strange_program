@@ -1,9 +1,9 @@
 pushd $PSScriptRoot
-$warmup = 32
-$testing = 16
+$warmup = 1
+$testing = 1
 $times = gci bin | % {
     $exe = $_
-    $variant = $_.Name-replace".exe$"
+    $variant = $_.Name-replace".\w*$"
     Write-Host "Testing $variant"
     $sw = [System.Diagnostics.Stopwatch]::New()
     1..$warmup | % {

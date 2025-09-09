@@ -1,5 +1,5 @@
 set terminal pngcairo size 1200,700 enhanced font "Arial,14"
-set output 'times_bar.png'
+set output 'result.png'
 
 set style data histogram
 set style fill solid 0.8 border -1
