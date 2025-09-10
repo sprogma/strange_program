@@ -249,7 +249,7 @@ set title "function '%s' results"
 set xlabel ""
 set ylabel "time (ms)"
 
-# set yrange [0:*]
+set yrange [0:*]
 
 set style data histogram
 set style histogram clustered gap 1
@@ -285,10 +285,12 @@ delta = 0.18
 
         
         system("gnuplot ./bench_plot_generated.gp");
+        #ifdef WIN32
         system("pwsh -c see bench_histogram_generated.png");
+        remove("./bench_histogram_generated.png");
+        #endif
         remove("./bench_plot_generated.gp");
         remove("./bench_data_generated.csv");
-        remove("./bench_histogram_generated.png");
     }
 
     

@@ -1,0 +1,17 @@
+1.
+On windows r is slower than rb
+(becouse of \n -> \r\n)
+
+2.
+On linux swapping parameters of fread resulting in speedup,
+on windows speed of both ways is optimal.
+(on linux is better to do size=size, count=1)
+
+
+3.
+fread (using 2. speeding for linux)
+has same speed as direct system call.
+
+4.
+Overlapped IO on windows is not slower than normal IO.
+

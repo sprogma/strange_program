@@ -1,14 +1,16 @@
+#include "stdio.h"
+
 #include "bench.h"
 
-BENCH(strlen)
+BENCH(file_input)
 {
     int n;
-    // BENCH_OPTION("n=1")      { n = 1; }
-    BENCH_OPTION("n=10")     { n = 10; }
-    BENCH_OPTION("n=100")    { n = 100; }
-    BENCH_OPTION("n=1e3")    { n = 1000; }
-    BENCH_OPTION("n=1e5")    { n = 100000; }
-    BENCH_OPTION("n=1e7")    { n = 10000000; }
+    const char *name;
+    BENCH_OPTION("10mb.txt")     { name = "10mb.txt"; }
+    BENCH_OPTION("100mb.txt")    { name = "100mb.txt"; }
+
+    FILE *f = fopen(name, "r");
+    
     char *s = calloc(n, 1);
     if (n != 1)
     {
