@@ -1,2 +1,6 @@
 
+to see disk speed run:
+[under root]
+winsat disk -drive C
+ 
 ! wb is obviously faster than w - in 3 times!

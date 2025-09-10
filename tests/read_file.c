@@ -23,6 +23,7 @@ BENCH(file_input)
     const char *name;
     BENCH_OPTION("10mb.txt")     { name = "10mb.txt"; }
     BENCH_OPTION("100mb.txt")    { name = "100mb.txt"; }
+    BENCH_OPTION("1000mb.txt")    { name = "1000mb.txt"; }
 
 
     BENCH_VARIANT("fread r size=1")
