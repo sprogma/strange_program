@@ -449,13 +449,13 @@ void simple_qsort(char **s, size_t length)
     for (size_t i = 1; i < length; ++i)
     {
         int res = strcmp(p, s[i]);
-        /* TODO: replace >= on >, and fix bugs */
-        if (res >= 0) /* p > s[i] */
+        /* TODO: replace <= on <, and fix bugs */
+        if (res >= 0) /* p < s[i] */
         {
             SWAP_PTR(*greater_begin, s[i]);
             greater_begin++;
         }
-        else if (res < 0) /* p < s[i] */
+        else if (res < 0) /* p > s[i] */
         {
             /* nothing to do */
         }
@@ -488,6 +488,7 @@ void merge(char **dest, char **a, char **b, size_t la, size_t lb)
 {
     while (la && lb)
     {
+        // printf("%p %p\n", *a, *b);
         if (strcmp(*a, *b) <= 0)
         {
             *dest++ = *a++;
@@ -505,7 +506,7 @@ void merge(char **dest, char **a, char **b, size_t la, size_t lb)
     }
     while (lb--)
     {
-        *dest++ = *a++;
+        *dest++ = *b++;
     }
 }
 
@@ -515,26 +516,33 @@ void merge_sort_recurse(char **dest, char **s, size_t length)
     {
         return;
     }
+    // printf("%p <- %p [%d]\n", dest, s, (int)length);
     if (length == 2)
     {
         if (strcmp(s[0], s[1]) > 0)
         {
-            char *tmp = s[0];
-            s[0] = s[1];
-            s[1] = tmp;
+            dest[0] = s[1];
+            dest[1] = s[0];
+        }
+        else
+        {
+            dest[0] = s[0];
+            dest[1] = s[1];
         }
         return;
     }
     if (length < 16)
     {
         insertion_sort(s, length);
+        memcpy(dest, s, sizeof(*dest) * length);
         return;
     }
     size_t ll = length >> 1;
     size_t rl = length - ll;
     merge_sort_recurse(dest, s, ll);
-    merge_sort_recurse(dest, s + ll, lr);
-    merge(s, dest, dest + ll);
+    merge_sort_recurse(dest + ll, s + ll, rl);
+    merge(s, dest, dest + ll, ll, rl);
+    memcpy(dest, s, sizeof(*dest) * length);
 }
 
 void merge_sort(char **index, size_t length)
@@ -723,6 +731,22 @@ BENCH(sort_string)
             BENCH_START
             {
                 simple_qsort(index, strings);
+            }
+            BENCH_END
+            assert_sorted(index, strings);
+            free(buffer);
+            free(index);
+        }
+    }
+    
+
+    BENCH_VARIANT("simple mergesort")
+    {
+        BENCH_RUN(0, 1)
+        {
+            BENCH_START
+            {
+                merge_sort(index, strings);
             }
             BENCH_END
             assert_sorted(index, strings);

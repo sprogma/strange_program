@@ -287,7 +287,7 @@ delta = 0.18
         system("gnuplot ./bench_plot_generated.gp");
         #ifdef WIN32
         system("pwsh -c see bench_histogram_generated.png");
-        remove("./bench_histogram_generated.png");
+        // remove("./bench_histogram_generated.png");
         #endif
         remove("./bench_plot_generated.gp");
         remove("./bench_data_generated.csv");

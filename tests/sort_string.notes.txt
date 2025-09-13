@@ -71,6 +71,15 @@ same as radix MSD, but use uint16 as key, instead of uint8.
 Stable: NO
 Memory: O(logN)
 Worst: O(N^2*L)
-Worst? O(NlogN*logL)
+Averg? O(NlogN*logL)
 
 simple qsort (but in-place, and collecting all equal to pivot elements)
+
+
+7. simple mergesort
+Stable: YES
+Memory O(N)
+Worst: O(NlogN*L)
+Avreg? O(NlogN*logL)
+
+simple mergesort, allocates one temporary buffer to store results.
