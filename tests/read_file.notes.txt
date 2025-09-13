@@ -15,3 +15,9 @@ has same speed as direct system call.
 4.
 Overlapped IO on windows is not slower than normal IO.
 
+5.
+on windows flags of CreateFile don't change speed of reading files.
+[like remove FILE_SHARE_READ, or add SEQUENTIAL_SCAN...]
+
+6.
+Use LARGE_PAGES!?

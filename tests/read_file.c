@@ -3,7 +3,11 @@
 
 #ifdef WIN32
     #include "windows.h"
-
+    
+    #ifndef FILE_MAP_LARGE_PAGES
+    #define FILE_MAP_LARGE_PAGES 0x20000000
+    #endif
+    
     typedef struct _MEMORY_RANGE_ENTRY {
         PVOID VirtualAddress;
         SIZE_T NumberOfBytes;
@@ -137,7 +141,7 @@ BENCH(file_input)
     #endif
     
     #ifdef WIN32
-    BENCH_VARIANT("Winapi ReadFile single")
+    BENCH_VARIANT("Winapi ReadFile")
     {
         BENCH_RUN(0, 1)
         {
@@ -173,24 +177,25 @@ BENCH(file_input)
         }
     }
     #endif
-
+    
     #ifdef WIN32
-    BENCH_VARIANT("Winapi CreateFileMapping")
+    BENCH_VARIANT("Winapi CreateFileMapping FILE_MAP_COPY")
     {
         BENCH_RUN(0, 1)
         {
             BENCH_START    
 
-            HANDLE hFile = CreateFileA(name, GENERIC_READ,
-                       FILE_SHARE_READ, //  | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+            HANDLE hFile = CreateFileA(name, GENERIC_READ | GENERIC_WRITE,
+                       0, //  | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
                        NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
 
             LARGE_INTEGER fileSizeLi;
             GetFileSizeEx(hFile, &fileSizeLi);
 
-            HANDLE hMap = CreateFileMappingA(hFile, NULL, PAGE_READONLY, 0, 0, NULL);
+            HANDLE hMap = CreateFileMappingA(hFile, NULL, PAGE_READWRITE | SEC_COMMIT, 0, 0, NULL);
 
-            const char *s = (const char *)MapViewOfFile(hMap, FILE_MAP_READ, 0, 0, 0);
+            char *s = (char *)MapViewOfFile(hMap, FILE_MAP_ALL_ACCESS | FILE_MAP_COPY, 0, 0, 0);
+            
             SIZE_T size = (SIZE_T)fileSizeLi.QuadPart;
 
             
@@ -199,6 +204,7 @@ BENCH(file_input)
             range.NumberOfBytes = size;
             PrefetchVirtualMemory(GetCurrentProcess(), 1, &range, 0);
             
+            s[0] = '2';
             printf("%d\n", (unsigned int)s[size - 1]);
 
             // Cleanup
@@ -209,7 +215,48 @@ BENCH(file_input)
         }
     }
     #endif
+    
+    #ifdef WIN32
+    /* not working: not load memory or loaded memory doesn't copies.
+    BENCH_VARIANT("Winapi CreateFileMapping FILE_MAP_COPY + FILE_MAP_LARGE_PAGES")
+    {
+        BENCH_RUN(0, 1)
+        {
+            BENCH_START    
 
+            HANDLE hFile = CreateFileA(name, GENERIC_READ | GENERIC_WRITE,
+                       0, //  | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+                       NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+
+            LARGE_INTEGER fileSizeLi;
+            GetFileSizeEx(hFile, &fileSizeLi);
+
+            HANDLE hMap = CreateFileMappingA(hFile, NULL, PAGE_READWRITE | SEC_COMMIT | SEC_LARGE_PAGES, 0, 0, NULL);
+
+            char *s = (char *)MapViewOfFile(hMap, FILE_MAP_ALL_ACCESS | FILE_MAP_COPY | FILE_MAP_LARGE_PAGES, 0, 0, 0);
+            SIZE_T size = (SIZE_T)fileSizeLi.QuadPart;
+
+            
+            MEMORY_RANGE_ENTRY range;
+            range.VirtualAddress = (PVOID)s;
+            range.NumberOfBytes = size;
+            PrefetchVirtualMemory(GetCurrentProcess(), 1, &range, 0);
+            
+            s[0] = '2';
+            
+            printf("%d\n", (int)size);
+            printf("%d\n", (unsigned int)s[size - 1]);
+
+            // Cleanup
+            UnmapViewOfFile((LPCVOID)s);
+            CloseHandle(hMap);
+            CloseHandle(hFile);
+            BENCH_END
+        }
+    }
+    */
+    #endif
+    
     #ifdef WIN32
     BENCH_VARIANT("Winapi CreateFileMapping + copy")
     {
@@ -218,13 +265,13 @@ BENCH(file_input)
             BENCH_START    
 
             HANDLE hFile = CreateFileA(name, GENERIC_READ,
-                       FILE_SHARE_READ, //  | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+                       0, //  | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
                        NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
 
             LARGE_INTEGER fileSizeLi;
             GetFileSizeEx(hFile, &fileSizeLi);
 
-            HANDLE hMap = CreateFileMappingA(hFile, NULL, PAGE_READONLY, 0, 0, NULL);
+            HANDLE hMap = CreateFileMappingA(hFile, NULL, PAGE_READONLY | SEC_COMMIT, 0, 0, NULL);
 
             const char *s = (const char *)MapViewOfFile(hMap, FILE_MAP_READ, 0, 0, 0);
             SIZE_T size = (SIZE_T)fileSizeLi.QuadPart;

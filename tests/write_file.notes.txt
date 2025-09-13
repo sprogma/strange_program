@@ -1,0 +1,8 @@
+1. Many is the same as read_file test
+
+2.
+but WriteFile is too fast?
+[try to remove memset(..., 1, ...) to see strange speed on calloced data]
+
+3.
+Use LARGE_PAGES!?

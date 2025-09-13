@@ -18,10 +18,10 @@
 #define SHOW_LITTLE_TIME_IN_MICROSECONDS
 #define USE_LOG_SCALE_IN_GISTOGRAM
 
-// #define RUN_WARMUP_GLOBAL_SCALE 1
-// #define RUN_MEASURES_GLOBAL_SCALE 1
-#define RUN_WARMUP_GLOBAL_SCALE 2
-#define RUN_MEASURES_GLOBAL_SCALE 2
+#define RUN_WARMUP_GLOBAL_SCALE 1
+#define RUN_MEASURES_GLOBAL_SCALE 1
+// #define RUN_WARMUP_GLOBAL_SCALE 2
+// #define RUN_MEASURES_GLOBAL_SCALE 2
 
 /* not works on linux */
 // #define MIN_INSTEAD_OF_MEAN
@@ -264,7 +264,7 @@ set boxwidth 0.8
 set style line 1 lc rgb "#666666" lt 1 lw 1
 set grid ytics linestyle 1
 
-set key inside right top vertical
+set key outside right top vertical
 
 set xtics rotate by -90
 # set xtic rotate by 0 scale 0
