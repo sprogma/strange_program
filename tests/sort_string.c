@@ -187,16 +187,16 @@ void radix_MSD_no_fallback(char **s, size_t length)
 struct radix_MSD_array
 {
     char *s;
-    char *e;
+    size_t e;
 };
 
 
 size_t radix_MSD_qsort_compare_offset = 0;
 int radix_MSD_qsort_compare_string_strcmp(const void *a, const void *b) 
 {
-    const char *s1 = *(const char **)a;
-    const char *s2 = *(const char **)b;
-    return strcmp(s1 + radix_MSD_qsort_compare_offset, s2 + radix_MSD_qsort_compare_offset);
+    const struct radix_MSD_array s1 = *(const struct radix_MSD_array *)a;
+    const struct radix_MSD_array s2 = *(const struct radix_MSD_array *)b;
+    return strcmp(s1.s + radix_MSD_qsort_compare_offset, s2.s + radix_MSD_qsort_compare_offset);
 }
 
 void radix_MSD_recurse(struct radix_MSD_array *s, struct radix_MSD_array *tmp, size_t letter, size_t length)
@@ -207,8 +207,12 @@ void radix_MSD_recurse(struct radix_MSD_array *s, struct radix_MSD_array *tmp, s
     /* count first letters */
     for (size_t i = 0; i < length; ++i)
     {
+        if (s[i].s[letter] == 0)
+        {
+            s[i].e = -1;
+        }
         unsigned char res = 0;
-        if ((size_t)(s[i].e - s[i].s) > letter)
+        if (s[i].e != (size_t)-1)
         {
             res = s[i].s[letter];
         }
@@ -223,7 +227,7 @@ void radix_MSD_recurse(struct radix_MSD_array *s, struct radix_MSD_array *tmp, s
     for (size_t i = length - 1; i < length; --i)
     {
         unsigned char res = 0;
-        if ((size_t)(s[i].e - s[i].s) > letter)
+        if (s[i].e != (size_t)-1)
         {
             res = s[i].s[letter];
         }
@@ -245,9 +249,10 @@ void radix_MSD_recurse(struct radix_MSD_array *s, struct radix_MSD_array *tmp, s
         {
             s[start] = tmp[start];
         }
-        else if (end - start < 8192)
+        else if (end - start < 1024)
         {
-            radix_MSD_qsort_compare_offset = letter + 1;
+            radix_MSD_qsort_compare_offset = letter;
+            memcpy(s + start, tmp + start, sizeof(*s) * (end - start));
             qsort(s + start, end - start, sizeof(*s), radix_MSD_qsort_compare_string_strcmp);
         }
         else
@@ -267,7 +272,7 @@ void radix_MSD(char **index, size_t length)
     for (size_t i = 0; i < length; ++i)
     {
         s[i].s = index[i];
-        s[i].e = index[i] + strlen(index[i]);
+        s[i].e = 0;
     }
     radix_MSD_recurse(s, tmp, 0, length);
     for (size_t i = 0; i < length; ++i)
@@ -289,13 +294,13 @@ void radix_MSD_int16_recurse(struct radix_MSD_array *s, struct radix_MSD_array *
     for (size_t i = 0; i < length; ++i)
     {
         unsigned char resA = 0, resB = 0;
-        if ((size_t)(s[i].e - s[i].s) > 2 * letter + 1)
-        {
-            resB = s[i].s[2 * letter + 1];
-        }
-        if ((size_t)(s[i].e - s[i].s) > 2 * letter)
+        if (s[i].e != (size_t)-1)
         {
             resA = s[i].s[2 * letter];
+        }
+        if (s[i].e != (size_t)-1 && s[i].s[2 * letter] != 0)
+        {
+            resB = s[i].s[2 * letter + 1];
         }
         uint16_t res = (resA << 8) | resB;
         bs[res]++;
@@ -309,11 +314,19 @@ void radix_MSD_int16_recurse(struct radix_MSD_array *s, struct radix_MSD_array *
     for (size_t i = length - 1; i < length; --i)
     {
         unsigned char resA = 0, resB = 0;
-        if ((size_t)(s[i].e - s[i].s) > 2 * letter + 1)
+        if (s[i].s[2 * letter] == 0)
+        {
+            s[i].e = -1;
+        }
+        if (s[i].e != (size_t)-1)
         {
             resB = s[i].s[2 * letter + 1];
         }
-        if ((size_t)(s[i].e - s[i].s) > 2 * letter)
+        if (s[i].s[2 * letter + 1] == 0)
+        {
+            s[i].e = -1;
+        }
+        if (s[i].e != (size_t)-1)
         {
             resA = s[i].s[2 * letter];
         }
@@ -338,9 +351,10 @@ void radix_MSD_int16_recurse(struct radix_MSD_array *s, struct radix_MSD_array *
         {
             s[start] = tmp[start];
         }
-        else if (end - start < 8192)
+        else if (end - start < 1024)
         {
-            radix_MSD_qsort_compare_offset = letter + 1;
+            radix_MSD_qsort_compare_offset = 2 * letter;
+            memcpy(s + start, tmp + start, sizeof(*s) * (end - start));
             qsort(s + start, end - start, sizeof(*s), radix_MSD_qsort_compare_string_strcmp);
         }
         // else if (end - start < 512)
@@ -365,7 +379,7 @@ void radix_MSD_int16(char **index, size_t length)
     for (size_t i = 0; i < length; ++i)
     {
         s[i].s = index[i];
-        s[i].e = index[i] + strlen(index[i]);
+        s[i].e = 0;
     }
     if (length < 2048)
     {   
@@ -381,6 +395,24 @@ void radix_MSD_int16(char **index, size_t length)
     }
     free(tmp);
     free(s);
+}
+
+
+
+
+void assert_sorted(char **index, size_t length)
+{
+    for (size_t i = 1; i < length; ++i)
+    {
+        if (strcmp(index[i - 1], index[i]) > 0)
+        {
+            printf("%s at %s is wrong:\n", current_variant, current_option);
+            printf("%s\n", index[i - 1]);
+            printf(">\n");
+            printf("%s\n", index[i]);
+            exit(8);
+        }
+    }
 }
 
 
@@ -453,6 +485,7 @@ BENCH(sort_string)
                 qsort(index, strings, sizeof(index), compare_string_strcmp);
             }
             BENCH_END
+            assert_sorted(index, strings);
             free(buffer);
             free(index);
         }
@@ -467,6 +500,7 @@ BENCH(sort_string)
                 qsort(index, strings, sizeof(index), compare_string_strcmp_and_check_letter);
             }
             BENCH_END
+            assert_sorted(index, strings);
             free(buffer);
             free(index);
         }
@@ -481,6 +515,7 @@ BENCH(sort_string)
                 radix_LSD(index, strings);
             }
             BENCH_END
+            assert_sorted(index, strings);
             free(buffer);
             free(index);
         }
@@ -496,6 +531,7 @@ BENCH(sort_string)
                 radix_MSD_no_fallback(index, strings);
             }
             BENCH_END
+            assert_sorted(index, strings);
             free(buffer);
             free(index);
         }
@@ -511,6 +547,7 @@ BENCH(sort_string)
                 radix_MSD(index, strings);
             }
             BENCH_END
+            assert_sorted(index, strings);
             free(buffer);
             free(index);
         }
@@ -526,6 +563,7 @@ BENCH(sort_string)
                 radix_MSD_int16(index, strings);
             }
             BENCH_END
+            assert_sorted(index, strings);
             free(buffer);
             free(index);
         }

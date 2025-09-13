@@ -55,7 +55,8 @@ Worst: O(N*L)
 Averg? O(N*logL)
 
 same as radix MSD no fallback, but
-if size is less than N (~512) - fallback to qsort
+* if size is less than N (~512) - fallback to qsort
+* not calculates strlen from input
 
 
 5. radix MSD int16
