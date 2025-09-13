@@ -109,6 +109,7 @@ void radix_LSD(char **s, size_t length)
 }
 
 
+
 void radix_MSD_no_fallback_recurse(char **s, char **e, char **tmp_s, char **tmp_e, size_t letter, size_t length)
 {
     // printf("Level: %d:%d\n", (int)letter, (int)length);
@@ -266,6 +267,11 @@ void radix_MSD_recurse(struct radix_MSD_array *s, struct radix_MSD_array *tmp, s
 
 void radix_MSD(char **index, size_t length)
 {
+    if (length < 1024)
+    {   
+        qsort(index, length, sizeof(*index), compare_string_strcmp);
+        return;
+    }
     /* allocate temporary buffer */
     struct radix_MSD_array *s = malloc(sizeof(*s) * length);
     struct radix_MSD_array *tmp = malloc(sizeof(*tmp) * length);
@@ -373,6 +379,11 @@ void radix_MSD_int16_recurse(struct radix_MSD_array *s, struct radix_MSD_array *
 
 void radix_MSD_int16(char **index, size_t length)
 {
+    if (length < 1024)
+    {   
+        qsort(index, length, sizeof(*index), compare_string_strcmp);
+        return;
+    }
     /* allocate temporary buffer */
     struct radix_MSD_array *s = malloc(sizeof(*s) * length);
     struct radix_MSD_array *tmp = malloc(sizeof(*tmp) * length);
@@ -397,6 +408,141 @@ void radix_MSD_int16(char **index, size_t length)
     free(s);
 }
 
+
+void insertion_sort(char **s, size_t length)
+{
+    for (size_t n = length - 1; n < length; --n)
+    {
+        for (size_t m = n + 1; m < length && strcmp(s[m], s[m-1]) < 0; ++m)
+        {
+            char *tmp = s[m - 1];
+            s[m - 1] = s[m];
+            s[m] = tmp;
+        }
+    }
+}
+
+
+void simple_qsort(char **s, size_t length)
+{
+    #define SWAP_PTR(a, b) { char *tmp = (b); (b) = (a); (a) = tmp; }
+    if (length <= 1)
+    {
+        return;
+    }
+    if (length == 2)
+    {
+        if (strcmp(s[0], s[1]) > 0)
+        {
+            SWAP_PTR(s[0], s[1])
+        }
+        return;
+    }
+    if (length <= 16)
+    {
+        insertion_sort(s, length);
+        return;
+    }
+    char *p = s[0];
+    char **less_begin = s + 1;
+    char **greater_begin = s + 1;
+    for (size_t i = 1; i < length; ++i)
+    {
+        int res = strcmp(p, s[i]);
+        /* TODO: replace >= on >, and fix bugs */
+        if (res >= 0) /* p > s[i] */
+        {
+            SWAP_PTR(*greater_begin, s[i]);
+            greater_begin++;
+        }
+        else if (res < 0) /* p < s[i] */
+        {
+            /* nothing to do */
+        }
+        else /* p == s[i] */
+        {
+            /* TODO: here is some bug */
+            if (less_begin != greater_begin)
+            {
+                SWAP_PTR(*less_begin, s[i]);
+            }
+            less_begin++;
+            SWAP_PTR(*greater_begin, s[i]);
+            greater_begin++;
+        }
+    }
+    /* now all data is: [eq ... eq lt ... lt gt ... gt] */
+    size_t equal_size = less_begin - s;
+    size_t less_size = greater_begin - less_begin;
+    size_t greater_size = length - equal_size - less_size;
+    for (size_t i = 0; i < equal_size; ++i)
+    {
+        SWAP_PTR(s[i], greater_begin[~i])
+    }
+    simple_qsort(s, less_size);
+    simple_qsort(greater_begin, greater_size);
+    #undef SWAP_PTR
+}
+
+void merge(char **dest, char **a, char **b, size_t la, size_t lb)
+{
+    while (la && lb)
+    {
+        if (strcmp(*a, *b) <= 0)
+        {
+            *dest++ = *a++;
+            la--;
+        }
+        else
+        {
+            *dest++ = *b++;
+            lb--;
+        }
+    }
+    while (la--)
+    {
+        *dest++ = *a++;
+    }
+    while (lb--)
+    {
+        *dest++ = *a++;
+    }
+}
+
+void merge_sort_recurse(char **dest, char **s, size_t length)
+{
+    if (length <= 1)
+    {
+        return;
+    }
+    if (length == 2)
+    {
+        if (strcmp(s[0], s[1]) > 0)
+        {
+            char *tmp = s[0];
+            s[0] = s[1];
+            s[1] = tmp;
+        }
+        return;
+    }
+    if (length < 16)
+    {
+        insertion_sort(s, length);
+        return;
+    }
+    size_t ll = length >> 1;
+    size_t rl = length - ll;
+    merge_sort_recurse(dest, s, ll);
+    merge_sort_recurse(dest, s + ll, lr);
+    merge(s, dest, dest + ll);
+}
+
+void merge_sort(char **index, size_t length)
+{
+    char **dest = malloc(sizeof(*dest) * length);
+    merge_sort_recurse(dest, index, length);
+    free(dest);
+}
 
 
 
@@ -561,6 +707,22 @@ BENCH(sort_string)
             BENCH_START
             {
                 radix_MSD_int16(index, strings);
+            }
+            BENCH_END
+            assert_sorted(index, strings);
+            free(buffer);
+            free(index);
+        }
+    }
+    
+
+    BENCH_VARIANT("simple qsort")
+    {
+        BENCH_RUN(0, 1)
+        {
+            BENCH_START
+            {
+                simple_qsort(index, strings);
             }
             BENCH_END
             assert_sorted(index, strings);

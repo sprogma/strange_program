@@ -66,3 +66,11 @@ Worst: O(N*L)
 Averg? O(N*logL)
 
 same as radix MSD, but use uint16 as key, instead of uint8.
+
+6. simple qsort
+Stable: NO
+Memory: O(logN)
+Worst: O(N^2*L)
+Worst? O(NlogN*logL)
+
+simple qsort (but in-place, and collecting all equal to pivot elements)
