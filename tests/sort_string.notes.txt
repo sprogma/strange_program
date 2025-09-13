@@ -1,0 +1,67 @@
+Description of alorithms:
+
+N - count of strings
+L - max/avr string length
+
+
+1. builtin + strcmp
+Stable: NO
+Memory? ?
+Worst: O(N^2*L)
+Averg? O(NlogN*logL)
+call qsort with comparator calling strcmp.
+
+
+2. builtin + check first byte 
+Stable: NO
+Memory? ?
+Worst: O(N^2*L)
+Averg? O(NlogN*logL)
+call qsort with comparator:
+    if a[0] != b[0]:
+        return a[0] - b[0]
+    return strcmp(a, b)
+
+
+3. radix LSD
+Stable: YES
+Memory: O(N)
+Worst: O(N*L)
+Averg: O(N*L)
+
+simple least significant digit radix sort.
+[stable radix sort by last letter, than by previous, and repeat untill the first one is sorted.]
+
+[good asymptotic, but most other algos stop comparing strings after first mismatch, and at practice are faster.]
+
+
+4. radix MSD no fallback
+Stable: YES
+Memory: O(N)
+Worst: O(N*L)
+Averg? O(N*logL)
+
+most significant digit radix sort.
+This is like building a trie, but implicitly, and using little bit another way.
+
+
+radix sort by first letter,
+then call recursive from each part.
+
+4. radix MSD
+Stable: YES
+Memory: O(N)
+Worst: O(N*L)
+Averg? O(N*logL)
+
+same as radix MSD no fallback, but
+if size is less than N (~512) - fallback to qsort
+
+
+5. radix MSD int16
+Stable: YES
+Memory: O(N)
+Worst: O(N*L)
+Averg? O(N*logL)
+
+same as radix MSD, but use uint16 as key, instead of uint8.

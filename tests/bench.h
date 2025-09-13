@@ -340,21 +340,36 @@ delta = 0.18
 }
 
 
+#define CALL_MACRO2(name) wrapper_ ## name ();
+#define CALL_MACRO(bench) CALL_MACRO2(bench)
+#define DECLARE_MACRO2(name) void wrapper_ ## name ();
+#define DECLARE_MACRO(bench) DECLARE_MACRO2(bench)
+
+#ifdef BENCH_FUNCTION
+DECLARE_MACRO(BENCH_FUNCTION)
+#else
+    #error Auto function collection not supported. Define BENCH_FUNCTION macro.
+#endif
 
 int cnt = 0;
 int main( void )
 {
     /* iterate functions */
-    bench_fn *fn = &wrapper_end_address;
-    bench_fn *start = (bench_fn *)(((size_t)&wrapper_end_address) & ~0xFFF);
-    while (fn >= start)
-    {
-        if (*fn)
-        {
-            (*fn)();
-        }
-        fn--;
-    }
+    #ifdef BENCH_FUNCTION
+    CALL_MACRO(BENCH_FUNCTION)
+    #else
+        #error Auto function collection not supported. Define BENCH_FUNCTION macro.
+    #endif
+    // bench_fn *fn = &wrapper_end_address;
+    // bench_fn *start = (bench_fn *)(((size_t)&wrapper_end_address) & ~0xFFF);
+    // while (fn >= start)
+    // {
+    //     if (*fn)
+    //     {
+    //         (*fn)();
+    //     }
+    //     fn--;
+    // }
 
     return 0;
 }

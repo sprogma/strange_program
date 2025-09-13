@@ -20,6 +20,7 @@
     #include "sys/stat.h"
 #endif
 
+#define BENCH_FUNCTION file_input
 #include "bench.h"
 
 BENCH(file_input)
