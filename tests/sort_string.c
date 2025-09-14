@@ -1269,21 +1269,21 @@ BENCH(sort_string)
         }
     }
 
-    // BENCH_VARIANT("radix LSD")
-    // {
-    //     BENCH_RUN(0, 1)
-    //     {
-    //         BENCH_START
-    //         {
-    //             radix_LSD(index, strings);
-    //         }
-    //         BENCH_END
-    //         assert_sorted(index, strings);
-    //         free(buffer);
-    //         free(index);
-    //     }
-    // }
-    // 
+    BENCH_VARIANT("radix LSD")
+    {
+        BENCH_RUN(0, 1)
+        {
+            BENCH_START
+            {
+                radix_LSD(index, strings);
+            }
+            BENCH_END
+            assert_sorted(index, strings);
+            free(buffer);
+            free(index);
+        }
+    }
+    
 
     BENCH_VARIANT("radix MSD no fallback")
     {
@@ -1315,115 +1315,115 @@ BENCH(sort_string)
             free(index);
         }
     }
-//     
-// 
-//     BENCH_VARIANT("radix MSD int16")
-//     {
-//         BENCH_RUN(0, 1)
-//         {
-//             BENCH_START
-//             {
-//                 radix_MSD_int16(index, strings);
-//             }
-//             BENCH_END
-//             assert_sorted(index, strings);
-//             free(buffer);
-//             free(index);
-//         }
-//     }
-//     
-// 
-//     BENCH_VARIANT("simple qsort")
-//     {
-//         BENCH_RUN(0, 1)
-//         {
-//             BENCH_START
-//             {
-//                 simple_qsort(index, strings);
-//             }
-//             BENCH_END
-//             assert_sorted(index, strings);
-//             free(buffer);
-//             free(index);
-//         }
-//     }
-//     
-// 
-//     BENCH_VARIANT("simple mergesort")
-//     {
-//         BENCH_RUN(0, 1)
-//         {
-//             BENCH_START
-//             {
-//                 merge_sort(index, strings);
-//             }
-//             BENCH_END
-//             assert_sorted(index, strings);
-//             free(buffer);
-//             free(index);
-//         }
-//     }
-//     
-// 
-//     BENCH_VARIANT("brust0 128 sort")
-//     {
-//         BENCH_RUN(0, 1)
-//         {
-//             BENCH_START
-//             {
-//                 brust0_sort(index, strings);
-//             }
-//             BENCH_END
-//             assert_sorted(index, strings);
-//             free(buffer);
-//             free(index);
-//         }
-//     }
-//     
-//     BENCH_VARIANT("brust1 256 sort")
-//     {
-//         BENCH_RUN(0, 1)
-//         {
-//             BENCH_START
-//             {
-//                 brust1_sort(index, strings);
-//             }
-//             BENCH_END
-//             assert_sorted(index, strings);
-//             free(buffer);
-//             free(index);
-//         }
-//     }
-//     
-// 
-//     BENCH_VARIANT("brust2 1k sort")
-//     {
-//         BENCH_RUN(0, 1)
-//         {
-//             BENCH_START
-//             {
-//                 brust2_sort(index, strings);
-//             }
-//             BENCH_END
-//             assert_sorted(index, strings);
-//             free(buffer);
-//             free(index);
-//         }
-//     }
-//     
-// 
-//     BENCH_VARIANT("brust3 2k sort")
-//     {
-//         BENCH_RUN(0, 1)
-//         {
-//             BENCH_START
-//             {
-//                 brust3_sort(index, strings);
-//             }
-//             BENCH_END
-//             assert_sorted(index, strings);
-//             free(buffer);
-//             free(index);
-//         }
-//     }
+    
+
+    BENCH_VARIANT("radix MSD int16")
+    {
+        BENCH_RUN(0, 1)
+        {
+            BENCH_START
+            {
+                radix_MSD_int16(index, strings);
+            }
+            BENCH_END
+            assert_sorted(index, strings);
+            free(buffer);
+            free(index);
+        }
+    }
+    
+
+    BENCH_VARIANT("simple qsort")
+    {
+        BENCH_RUN(0, 1)
+        {
+            BENCH_START
+            {
+                simple_qsort(index, strings);
+            }
+            BENCH_END
+            assert_sorted(index, strings);
+            free(buffer);
+            free(index);
+        }
+    }
+    
+
+    BENCH_VARIANT("simple mergesort")
+    {
+        BENCH_RUN(0, 1)
+        {
+            BENCH_START
+            {
+                merge_sort(index, strings);
+            }
+            BENCH_END
+            assert_sorted(index, strings);
+            free(buffer);
+            free(index);
+        }
+    }
+    
+
+    BENCH_VARIANT("brust0 128 sort")
+    {
+        BENCH_RUN(0, 1)
+        {
+            BENCH_START
+            {
+                brust0_sort(index, strings);
+            }
+            BENCH_END
+            assert_sorted(index, strings);
+            free(buffer);
+            free(index);
+        }
+    }
+    
+    BENCH_VARIANT("brust1 256 sort")
+    {
+        BENCH_RUN(0, 1)
+        {
+            BENCH_START
+            {
+                brust1_sort(index, strings);
+            }
+            BENCH_END
+            assert_sorted(index, strings);
+            free(buffer);
+            free(index);
+        }
+    }
+    
+
+    BENCH_VARIANT("brust2 1k sort")
+    {
+        BENCH_RUN(0, 1)
+        {
+            BENCH_START
+            {
+                brust2_sort(index, strings);
+            }
+            BENCH_END
+            assert_sorted(index, strings);
+            free(buffer);
+            free(index);
+        }
+    }
+    
+
+    BENCH_VARIANT("brust3 2k sort")
+    {
+        BENCH_RUN(0, 1)
+        {
+            BENCH_START
+            {
+                brust3_sort(index, strings);
+            }
+            BENCH_END
+            assert_sorted(index, strings);
+            free(buffer);
+            free(index);
+        }
+    }
 }

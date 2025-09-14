@@ -248,7 +248,7 @@ set datafile separator ";"
 
 # this works, but print image on top left connner, and rewrite all content in terminal.
 # set term sixel enhanced font "Arial,14"
-set terminal pngcairo size 1200,700 enhanced font "Arial,14"
+set terminal pngcairo size 1600,900 enhanced font "Arial,14"
 set output "bench_histogram_generated.png"
 
 set title "function '%s' results"
