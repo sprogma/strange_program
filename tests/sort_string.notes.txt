@@ -78,8 +78,17 @@ simple qsort (but in-place, and collecting all equal to pivot elements)
 
 7. simple mergesort
 Stable: YES
-Memory O(N)
+Memory: O(N)
 Worst: O(NlogN*L)
 Avreg? O(NlogN*logL)
 
 simple mergesort, allocates one temporary buffer to store results.
+
+8. brust sort
+Stable MAYBE [it is possible]
+Memory: O(N)
+Worst: O(N*L)
+Averg? O(N*logL)
+
+sort building brust trie.
+it is similar to MSD radix sort, but (as autors claim) more cache-friendly.
