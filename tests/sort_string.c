@@ -553,6 +553,76 @@ void merge_sort(char **index, size_t length)
 }
 
 
+#define L (512 - 3)
+struct brust_node
+{
+    void *data[L];
+    size_t leaf;
+    size_t count_equal;
+    size_t size;
+};
+
+struct brust_node brust_pool[1024 * 32];
+size_t            brust_pool_used;
+
+struct brust_node *brust_node_allocate()
+{
+    struct brust_node *ptr = &brust_pool[brust_pool_used++];
+    memset(ptr, 0, sizeof(*ptr));
+    ptr->leaf = -1;
+    return ptr;
+}
+
+void brust_node_brust(struct brust_node *node, size_t letter);
+void brust_node_insert(struct brust_node *node, char *string, size_t letter);
+
+void brust_node_brust(struct brust_node *node, size_t letter)
+{
+    node->leaf = 0;
+    for (size_t i = 0; i < L; ++i)
+    {
+        /* TODO: make little function unrolling [or compiler do so?] */
+        brust_node_insert(node, node->data[i], letter);
+    }
+}
+
+void brust_node_insert(struct brust_node *node, char *string, size_t letter)
+{
+    unsigned char c = string[letter];
+    if (c == 0)
+    {
+        node->count_equal++;
+        return;
+    }
+    if (!node->leaf)
+    {
+    insert_to_child:
+        if (node->data[c] == NULL)
+        {
+            node->data[c] = brust_node_allocate();
+        }
+        brust_node_insert(node->data[c], string, letter + 1);
+        return;
+    }
+    if (node->size == L)
+    {
+        brust_node_brust(node, letter);
+        goto insert_to_child;
+    }
+    node->data[node->size++] = string;
+}
+
+void brust_sort(char **index, size_t length)
+{
+    struct brust_node *root = brust_node_allocate();
+    brust_pool_used = 0;
+    for (size_t i = 0; i < length; ++i)
+    {
+        brust_node_insert(root, index[i], 0);
+    }
+}
+#undef L
+
 
 void assert_sorted(char **index, size_t length)
 {
