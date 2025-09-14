@@ -48,7 +48,21 @@ This is like building a trie, but implicitly, and using little bit another way.
 radix sort by first letter,
 then call recursive from each part.
 
-4. radix MSD
+
+4. radix MSD no fallback and no strlen
+Stable: YES
+Memory: O(N)
+Worst: O(N*L)
+Averg? O(N*logL)
+
+same as radix MSD no fallback, but
+* not calculates strlen from input
+
+
+radix sort by first letter,
+then call recursive from each part.
+
+5. radix MSD
 Stable: YES
 Memory: O(N)
 Worst: O(N*L)
@@ -56,10 +70,9 @@ Averg? O(N*logL)
 
 same as radix MSD no fallback, but
 * if size is less than N (~512) - fallback to qsort
-* not calculates strlen from input
 
 
-5. radix MSD int16
+6. radix MSD int16
 Stable: YES
 Memory: O(N)
 Worst: O(N*L)
@@ -67,7 +80,7 @@ Averg? O(N*logL)
 
 same as radix MSD, but use uint16 as key, instead of uint8.
 
-6. simple qsort
+7. simple qsort
 Stable: NO
 Memory: O(logN)
 Worst: O(N^2*L)
@@ -76,7 +89,7 @@ Averg? O(NlogN*logL)
 simple qsort (but in-place, and collecting all equal to pivot elements)
 
 
-7. simple mergesort
+8. simple mergesort
 Stable: YES
 Memory: O(N)
 Worst: O(NlogN*L)
@@ -84,17 +97,17 @@ Avreg? O(NlogN*logL)
 
 simple mergesort, allocates one temporary buffer to store results.
 
-8, 9, 10, 11. brust sort
+9, 10, 11, 12. brust sort
 Stable MAYBE [it is possible]
 Memory: O(N)
 Worst: O(N*L)
 Averg? O(N*logL)
 
 with basket size:
-8:  128
-9:  256
-10: 1024
-11: 2048
+9:  128
+10: 256
+11: 1024
+12: 2048
 
 sort building brust trie.
 it is similar to MSD radix sort, but (as autors claim) more cache-friendly.

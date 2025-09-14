@@ -181,8 +181,92 @@ void radix_MSD_no_fallback(char **s, size_t length)
         e[i] = s[i] + strlen(s[i]);
     }
     radix_MSD_no_fallback_recurse(s, e, tmp_s, tmp_e, 0, length);
+    free(e);
     free(tmp_s);
     free(tmp_e);
+}
+
+struct radix_MSD_no_fb_array
+{
+    char *s;
+    size_t e;
+};
+
+void radix_MSD_no_strlen_fallback_recurse(struct radix_MSD_no_fb_array *s, struct radix_MSD_no_fb_array *tmp, size_t letter, size_t length)
+{
+    size_t bs[256] = {};
+    /* create empty baskets */
+    /* count first letters */
+    for (size_t i = 0; i < length; ++i)
+    {
+        unsigned char res = 0;
+        if (s[i].s[letter] == 0)
+        {
+            s[i].e = 1;
+        }
+        if (!s[i].e)
+        {
+            res = s[i].s[letter];
+        }
+        bs[res]++;
+    }
+    /* calculate offsets */
+    for (size_t i = 1; i < 256; ++i)
+    {
+        bs[i] += bs[i - 1];
+    }
+    /* sort elements */
+    for (size_t i = length - 1; i < length; --i)
+    {
+        unsigned char res = 0;
+        if (!s[i].e)
+        {
+            res = s[i].s[letter];
+        }
+        bs[res]--;
+        tmp[bs[res]] = s[i];
+    }
+    /* copy back first group */
+    {
+        memcpy(s, tmp, sizeof(*s) * bs[1]);
+    }
+    /* call recursive sorts, if block */
+    for (size_t i = 1; i < 256; ++i)
+    {
+        size_t start = bs[i];
+        size_t end = (i + 1 == 256 ? length : bs[i + 1]);
+        if (end - start == 0) 
+        { }
+        else if (end - start == 1)
+        {
+            s[start] = tmp[start];
+        }
+        else
+        {
+            radix_MSD_no_strlen_fallback_recurse(tmp + start, s + start, letter + 1, end - start);
+            memcpy(s + start, tmp + start, sizeof(*s) * (end - start));
+        }
+    }
+}
+
+
+void radix_MSD_no_strlen_fallback(char **index, size_t length)
+{
+    /* allocate temporary buffer */
+    struct radix_MSD_no_fb_array *s = malloc(sizeof(*s) * length);
+    struct radix_MSD_no_fb_array *tmp = malloc(sizeof(*tmp) * length);
+    for (size_t i = 0; i < length; ++i)
+    {
+        s[i].s = index[i];
+        s[i].e = 0;
+    }
+    radix_MSD_no_strlen_fallback_recurse(s, tmp, 0, length);
+    free(tmp);
+    for (size_t i = 0; i < length; ++i)
+    {
+        index[i] = s[i].s;
+    }
+    free(s);
 }
 
 
@@ -1192,9 +1276,9 @@ BENCH(sort_string)
     BENCH_OPTION("1e3 x 1e5") { strings = 1000; min_string_size = max_string_size = 100000; }
     BENCH_OPTION("1e3 x 1e5 [ab]") { strings = 1000; min_string_size = max_string_size = 100000; full_alphabet = 0; }
     BENCH_OPTION("1e6 x 1e2") { strings = 1000000; min_string_size = max_string_size = 100; }
-    // BENCH_OPTION("1e6 x 5e2") { strings = 1000000; min_string_size = max_string_size = 500; }
-    // BENCH_OPTION("5e6 x 5e1") { strings = 5000000; min_string_size = max_string_size = 50; }
-    // BENCH_OPTION("5e6 x 5e1 [ab]") { strings = 5000000; min_string_size = max_string_size = 50; full_alphabet = 0; }
+    BENCH_OPTION("1e6 x 5e2") { strings = 1000000; min_string_size = max_string_size = 500; }
+    BENCH_OPTION("5e6 x 5e1") { strings = 5000000; min_string_size = max_string_size = 50; }
+    BENCH_OPTION("5e6 x 5e1 [ab]") { strings = 5000000; min_string_size = max_string_size = 50; full_alphabet = 0; }
     BENCH_OPTION("1e3 x [1e2-1e3]") { strings = 1000; min_string_size = 100; max_string_size = 1000; }
     BENCH_OPTION("1e3 x [1e4-1e5]") { strings = 1000; min_string_size = 1000; max_string_size = 100000; }
     BENCH_OPTION("1e5 x [1e2-1e3]") { strings = 100000; min_string_size = 100; max_string_size = 1000; }
@@ -1292,6 +1376,22 @@ BENCH(sort_string)
             BENCH_START
             {
                 radix_MSD_no_fallback(index, strings);
+            }
+            BENCH_END
+            assert_sorted(index, strings);
+            free(buffer);
+            free(index);
+        }
+    }
+    
+
+    BENCH_VARIANT("radix MSD no sqort,strlen")
+    {
+        BENCH_RUN(0, 1)
+        {
+            BENCH_START
+            {
+                radix_MSD_no_strlen_fallback(index, strings);
             }
             BENCH_END
             assert_sorted(index, strings);

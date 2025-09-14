@@ -17,7 +17,7 @@
 #define TABLE_VARIANT_COLUMN_SIZE 22
 #define TABLE_OPTION_COLUMN_SIZE 16
 #define COLOR_OUTPUT
-#define SHOW_TOTAL_AVERAGE_TIME
+#define SHOW_TOTAL_TOTAL_TIME
 #define SHOW_TOTAL_WORST_TIME
 #define SHOW_LITTLE_TIME_IN_MICROSECONDS
 #define USE_LOG_SCALE_IN_GISTOGRAM
@@ -324,8 +324,8 @@ delta = 0.18
     #ifdef SHOW_TOTAL_WORST_TIME
         printf("%*.*s", (int)TABLE_OPTION_COLUMN_SIZE, (int)TABLE_OPTION_COLUMN_SIZE, "Worst");
     #endif
-    #ifdef SHOW_TOTAL_AVERAGE_TIME
-        printf("%*.*s", (int)TABLE_OPTION_COLUMN_SIZE, (int)TABLE_OPTION_COLUMN_SIZE, "Avrg");
+    #ifdef SHOW_TOTAL_TOTAL_TIME
+        printf("%*.*s", (int)TABLE_OPTION_COLUMN_SIZE, (int)TABLE_OPTION_COLUMN_SIZE, "Total");
     #endif
     putchar('\n');
 
@@ -384,8 +384,8 @@ delta = 0.18
         #ifdef SHOW_TOTAL_WORST_TIME
             double worst = 0.0;
         #endif
-        #ifdef SHOW_TOTAL_AVERAGE_TIME
-            double avrg = 0.0;
+        #ifdef SHOW_TOTAL_TOTAL_TIME
+            double sum = 0.0;
         #endif
         for (int j = 1; option_names[j]; ++j)
         {
@@ -403,8 +403,8 @@ delta = 0.18
                     worst = measurements[i][j];
                 }
             #endif
-            #ifdef SHOW_TOTAL_AVERAGE_TIME
-                avrg += measurements[i][j];
+            #ifdef SHOW_TOTAL_TOTAL_TIME
+                sum += measurements[i][j];
             #endif
         }
         #ifdef SHOW_TOTAL_WORST_TIME
@@ -417,14 +417,14 @@ delta = 0.18
                 measurements_best[0] = worst;
             }
         #endif
-        #ifdef SHOW_TOTAL_AVERAGE_TIME
-            if (avrg > measurements_worst[((int)sizeof(measurements_best)/sizeof(*measurements_best)) - 1])
+        #ifdef SHOW_TOTAL_TOTAL_TIME
+            if (sum > measurements_worst[((int)sizeof(measurements_best)/sizeof(*measurements_best)) - 1])
             {
-                measurements_worst[((int)sizeof(measurements_best)/sizeof(*measurements_best)) - 1] = avrg;
+                measurements_worst[((int)sizeof(measurements_best)/sizeof(*measurements_best)) - 1] = sum;
             }
-            if (avrg < measurements_best[((int)sizeof(measurements_best)/sizeof(*measurements_best)) - 1])
+            if (sum < measurements_best[((int)sizeof(measurements_best)/sizeof(*measurements_best)) - 1])
             {
-                measurements_best[((int)sizeof(measurements_best)/sizeof(*measurements_best)) - 1] = avrg;
+                measurements_best[((int)sizeof(measurements_best)/sizeof(*measurements_best)) - 1] = sum;
             }
         #endif
     }
@@ -432,9 +432,11 @@ delta = 0.18
     for (int i = 1; variant_names[i]; ++i)
     {
         printf("%-*.*s", (int)TABLE_VARIANT_COLUMN_SIZE, (int)TABLE_VARIANT_COLUMN_SIZE, variant_names[i]);
-        double worst = 0.0;
-        #ifdef SHOW_TOTAL_AVERAGE_TIME
-            double avrg = 0.0;
+        #ifdef SHOW_TOTAL_WORST_TIME
+            double worst = 0.0;
+        #endif
+        #ifdef SHOW_TOTAL_TOTAL_TIME
+            double sum = 0.0;
         #endif
         for (int j = 1; option_names[j]; ++j)
         {
@@ -444,16 +446,16 @@ delta = 0.18
                     worst = measurements[i][j];
                 }
             #endif
-            #ifdef SHOW_TOTAL_AVERAGE_TIME
-                avrg += measurements[i][j];
+            #ifdef SHOW_TOTAL_TOTAL_TIME
+                sum += measurements[i][j];
             #endif
             PRINT_TIME(j, measurements[i][j])
         }
         #ifdef SHOW_TOTAL_WORST_TIME
             PRINT_TIME(0, worst)
         #endif
-        #ifdef SHOW_TOTAL_AVERAGE_TIME
-            PRINT_TIME(((int)sizeof(measurements_best)/sizeof(*measurements_best)) - 1, avrg)
+        #ifdef SHOW_TOTAL_TOTAL_TIME
+            PRINT_TIME(((int)sizeof(measurements_best)/sizeof(*measurements_best)) - 1, sum)
         #endif
         putchar('\n');
     }
