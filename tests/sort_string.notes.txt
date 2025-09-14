@@ -112,3 +112,26 @@ with basket size:
 sort building brust trie.
 it is similar to MSD radix sort, but (as autors claim) more cache-friendly.
 
+13, 14, 15, 16. shell sort
+Stable: NO,
+Memory: O(1)
+Worst: ???
+Averg: ???
+
+shell sort:
+13 - shell [worst - N^2]
+14 - hibbard [not enabled, it is too slow]
+15 - pratt O(Nlog^2N) + O(logN) memory on table
+16 - tokuda [best practical?]
+
+17. Batcher odd–even mergesort [P-cpu]
+Stable: ???
+Memory: O(n)
+Worst: ???
+Averg: ???
+
+parallel on cpu.
+Implementing Merge-Network on cpu threads.
+
+TODO:
+Bitonic mergesort

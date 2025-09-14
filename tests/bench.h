@@ -4,7 +4,7 @@
 #include "stdlib.h"
 #include "string.h"
 
-#ifdef WIN32
+#ifdef _WIN32
     #include "windows.h"
     #include "realtimeapiset.h"
 #endif
@@ -51,7 +51,7 @@ bench_fn __attribute__((section(".bench_section"))) __attribute__((used)) wrappe
         option_names[option_id] = string; \
     } \
     for(;current_option == NULL && !option_completed[option_id];current_option = string, option_completed[option_id] = 1)
-#ifdef WIN32
+#ifdef _WIN32
     #ifdef MIN_INSTEAD_OF_MEAN
         #define RESET_COUNTER bestbench_counter_total = 0x7fffffffffffffffll;
     #else
@@ -72,7 +72,7 @@ bench_fn __attribute__((section(".bench_section"))) __attribute__((used)) wrappe
 #define BENCH_RUN(warm, measure) \
             for (bench_run = -RUN_WARMUP_GLOBAL_SCALE * (warm); bench_run < RUN_MEASURES_GLOBAL_SCALE * (measure); ++bench_run)
 #ifdef MIN_INSTEAD_OF_MEAN
-    #ifdef WIN32
+    #ifdef _WIN32
         #define BENCH_START \
                     if (bench_run >= 0) \
                     { \
@@ -93,7 +93,7 @@ bench_fn __attribute__((section(".bench_section"))) __attribute__((used)) wrappe
         #error cannot use min instead of mean on linux
     #endif
 #else
-    #ifdef WIN32
+    #ifdef _WIN32
         #define BENCH_START \
                     if (bench_run >= 0) \
                     { \
@@ -136,7 +136,7 @@ double measurements[64][64] = {};
 int option_completed[64] = {};
 int variant_completed[64] = {};
 long long bestbench_counter = 0;
-#ifdef WIN32
+#ifdef _WIN32
     LARGE_INTEGER bestbench_counter_storage;
     long long bestbench_counter_total = 0;
 #else
@@ -147,7 +147,7 @@ volatile int do_not_optimize = 0;
 // use longjmp to return index of table there is current option and variant
 
 
-#ifdef WIN32
+#ifdef _WIN32
 jmp_buf buf;
 #else
 sigjmp_buf buf;
@@ -164,7 +164,7 @@ void handler(int sig)
         }
         else
         {
-            #ifdef WIN32
+            #ifdef _WIN32
                 QueryPerformanceFrequency(&bestbench_counter_storage);
                 measurements[variant_id][option_id] = (double)bestbench_counter_total / (double)bestbench_counter_storage.QuadPart
             #else
@@ -178,7 +178,7 @@ void handler(int sig)
             bestbench_counter = 0;
         }
         option_id = 0;
-        #ifdef WIN32
+        #ifdef _WIN32
         longjmp(buf, 0);
         #else
         siglongjmp(buf, 0);
@@ -198,7 +198,7 @@ void complete_benchmark(void (*fn)(), const char *testing_name)
 
     printf("Benchmarking %s...\n", testing_name);
 
-    #ifdef WIN32
+    #ifdef _WIN32
     int result = setjmp(buf);
     #else
     int result = sigsetjmp(buf, 1);
@@ -291,7 +291,7 @@ delta = 0.18
 
         
         system("gnuplot ./bench_plot_generated.gp");
-        #ifdef WIN32
+        #ifdef _WIN32
         system("pwsh -c see bench_histogram_generated.png");
         // remove("./bench_histogram_generated.png");
         #endif
