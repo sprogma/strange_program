@@ -554,33 +554,33 @@ void merge_sort(char **index, size_t length)
 }
 
 
-#define L (256 - 3)
-#define CNT 1024
-struct brust_node_equal
+#define L (128 - 3)
+#define CNT 2048
+struct brust0_node_equal
 {
     char *data[6];
     size_t size;
-    struct brust_node_equal *next;
+    struct brust0_node_equal *next;
 };
 
-struct brust_node
+struct brust0_node
 {
     void *data[L];
     size_t leaf;
-    struct brust_node_equal *equal;
+    struct brust0_node_equal *equal;
     size_t size;
 };
 
-struct brust_node_equal brust_equal_pool[1024 * 16];
-size_t                  brust_equal_pool_used;
-struct brust_node *brust_pool;
-size_t            brust_pool_allocated;
-size_t            brust_pool_used;
+struct brust0_node_equal brust0_equal_pool[1024 * 16];
+size_t                  brust0_equal_pool_used;
+struct brust0_node *brust0_pool;
+size_t            brust0_pool_allocated;
+size_t            brust0_pool_used;
 
-struct brust_node_equal *brust_node_equal_allocate()
+struct brust0_node_equal *brust0_node_equal_allocate()
 {
-    struct brust_node_equal *ptr = &brust_equal_pool[brust_equal_pool_used++];
-    // if (brust_equal_pool_used > sizeof(brust_equal_pool) / sizeof(*brust_equal_pool))
+    struct brust0_node_equal *ptr = &brust0_equal_pool[brust0_equal_pool_used++];
+    // if (brust0_equal_pool_used > sizeof(brust0_equal_pool) / sizeof(*brust0_equal_pool))
     // {
     //     printf("Out of pool\n");
     //     exit(1);
@@ -589,10 +589,10 @@ struct brust_node_equal *brust_node_equal_allocate()
     return ptr;
 }
 
-struct brust_node *brust_node_allocate()
+struct brust0_node *brust0_node_allocate()
 {
-    struct brust_node *ptr = &brust_pool[brust_pool_used++];
-    // if (brust_pool_used > brust_pool_allocated)
+    struct brust0_node *ptr = &brust0_pool[brust0_pool_used++];
+    // if (brust0_pool_used > brust0_pool_allocated)
     // {
     //     printf("Out of pool\n");
     //     exit(1);
@@ -602,40 +602,192 @@ struct brust_node *brust_node_allocate()
     return ptr;
 }
 
-void brust_node_brust(struct brust_node *node, size_t letter);
-void brust_node_insert(struct brust_node *node, char *string, size_t letter);
+void brust0_node_brust(struct brust0_node *node, size_t letter);
+void brust0_node_insert(struct brust0_node *node, char *string, size_t letter);
 
-void brust_node_add_equal(struct brust_node *node, char *string)
+void brust0_node_add_equal(struct brust0_node *node, char *string)
 {
     if (node->equal == NULL || node->equal->size == 6)
     {
-        struct brust_node_equal *ptr = brust_node_equal_allocate();
+        struct brust0_node_equal *ptr = brust0_node_equal_allocate();
         ptr->next = node->equal;
         node->equal = ptr;
     }
     node->equal->data[node->equal->size++] = string;
 }
 
-void brust_node_brust(struct brust_node *node, size_t letter)
+void brust0_node_brust(struct brust0_node *node, size_t letter)
 {
-    char *brust_node_data[L];
-    memcpy(brust_node_data, node->data, sizeof(brust_node_data));
+    char *brust0_node_data[L];
+    memcpy(brust0_node_data, node->data, sizeof(brust0_node_data));
     memset(node->data, 0, sizeof(node->data));
     node->leaf = 0;
     node->size = 0;
     for (size_t i = 0; i < L; ++i)
     {
         /* TODO: make little function unrolling [or compiler do so?] */
-        brust_node_insert(node, brust_node_data[i], letter);
+        brust0_node_insert(node, brust0_node_data[i], letter);
     }
 }
 
-void brust_node_insert(struct brust_node *node, char *string, size_t letter)
+void brust0_node_insert(struct brust0_node *node, char *string, size_t letter)
 {
     unsigned char c = string[letter];
     if (c == 0)
     {
-        brust_node_add_equal(node, string);
+        brust0_node_add_equal(node, string);
+        return;
+    }
+    c -= ' ';
+    if (!node->leaf)
+    {
+    insert_to_child:
+        if (node->data[c] == NULL)
+        {
+            node->data[c] = brust0_node_allocate();
+        }
+        brust0_node_insert(node->data[c], string, letter + 1);
+        return;
+    }
+    if (node->size == L)
+    {
+        brust0_node_brust(node, letter);
+        goto insert_to_child;
+    }
+    node->data[node->size++] = string;
+}
+
+char **brust0_node_read(struct brust0_node *node, char **dest)
+{
+    /* equal */
+    struct brust0_node_equal *ptr = node->equal;
+    while (ptr)
+    {
+        for (size_t i = 0; i < ptr->size; ++i)
+        {
+            *dest++ = ptr->data[i];
+        }
+        ptr = ptr->next;
+    }
+    /* other */
+    if (!node->leaf)
+    {
+        for (size_t i = 0; i < 125; ++i)
+        {
+            if (node->data[i])
+            {
+                dest = brust0_node_read(node->data[i], dest);
+            }
+        }
+        return dest;
+    }
+    qsort((char **)node->data, node->size, sizeof(char *), compare_string_strcmp);
+    for (size_t i = 0; i < node->size; ++i)
+    {
+        *dest++ = node->data[i];
+    }
+    return dest;
+}
+
+void brust0_sort(char **index, size_t length)
+{
+    brust0_pool_allocated = 1024 * CNT;
+    brust0_pool = malloc(sizeof(*brust0_pool) * brust0_pool_allocated);
+    brust0_pool_used = 0;
+    brust0_equal_pool_used = 0;
+    struct brust0_node *root = brust0_node_allocate();
+    for (size_t i = 0; i < length; ++i)
+    {
+        brust0_node_insert(root, index[i], 0);
+    }
+    brust0_node_read(root, index);
+    free(brust0_pool);
+}
+#undef L
+#undef CNT
+
+#define L (256 - 3)
+#define CNT 1024
+struct brust1_node_equal
+{
+    char *data[6];
+    size_t size;
+    struct brust1_node_equal *next;
+};
+
+struct brust1_node
+{
+    void *data[L];
+    size_t leaf;
+    struct brust1_node_equal *equal;
+    size_t size;
+};
+
+struct brust1_node_equal brust1_equal_pool[1024 * 16];
+size_t                  brust1_equal_pool_used;
+struct brust1_node *brust1_pool;
+size_t            brust1_pool_allocated;
+size_t            brust1_pool_used;
+
+struct brust1_node_equal *brust1_node_equal_allocate()
+{
+    struct brust1_node_equal *ptr = &brust1_equal_pool[brust1_equal_pool_used++];
+    // if (brust1_equal_pool_used > sizeof(brust1_equal_pool) / sizeof(*brust1_equal_pool))
+    // {
+    //     printf("Out of pool\n");
+    //     exit(1);
+    // }
+    memset(ptr, 0, sizeof(*ptr));
+    return ptr;
+}
+
+struct brust1_node *brust1_node_allocate()
+{
+    struct brust1_node *ptr = &brust1_pool[brust1_pool_used++];
+    // if (brust1_pool_used > brust1_pool_allocated)
+    // {
+    //     printf("Out of pool\n");
+    //     exit(1);
+    // }
+    memset(ptr, 0, sizeof(*ptr));
+    ptr->leaf = -1;
+    return ptr;
+}
+
+void brust1_node_brust(struct brust1_node *node, size_t letter);
+void brust1_node_insert(struct brust1_node *node, char *string, size_t letter);
+
+void brust1_node_add_equal(struct brust1_node *node, char *string)
+{
+    if (node->equal == NULL || node->equal->size == 6)
+    {
+        struct brust1_node_equal *ptr = brust1_node_equal_allocate();
+        ptr->next = node->equal;
+        node->equal = ptr;
+    }
+    node->equal->data[node->equal->size++] = string;
+}
+
+void brust1_node_brust(struct brust1_node *node, size_t letter)
+{
+    char *brust1_node_data[L];
+    memcpy(brust1_node_data, node->data, sizeof(brust1_node_data));
+    memset(node->data, 0, sizeof(node->data));
+    node->leaf = 0;
+    node->size = 0;
+    for (size_t i = 0; i < L; ++i)
+    {
+        /* TODO: make little function unrolling [or compiler do so?] */
+        brust1_node_insert(node, brust1_node_data[i], letter);
+    }
+}
+
+void brust1_node_insert(struct brust1_node *node, char *string, size_t letter)
+{
+    unsigned char c = string[letter];
+    if (c == 0)
+    {
+        brust1_node_add_equal(node, string);
         return;
     }
     if (!node->leaf)
@@ -643,23 +795,23 @@ void brust_node_insert(struct brust_node *node, char *string, size_t letter)
     insert_to_child:
         if (node->data[c] == NULL)
         {
-            node->data[c] = brust_node_allocate();
+            node->data[c] = brust1_node_allocate();
         }
-        brust_node_insert(node->data[c], string, letter + 1);
+        brust1_node_insert(node->data[c], string, letter + 1);
         return;
     }
     if (node->size == L)
     {
-        brust_node_brust(node, letter);
+        brust1_node_brust(node, letter);
         goto insert_to_child;
     }
     node->data[node->size++] = string;
 }
 
-char **brust_node_read(struct brust_node *node, char **dest)
+char **brust1_node_read(struct brust1_node *node, char **dest)
 {
     /* equal */
-    struct brust_node_equal *ptr = node->equal;
+    struct brust1_node_equal *ptr = node->equal;
     while (ptr)
     {
         for (size_t i = 0; i < ptr->size; ++i)
@@ -675,7 +827,7 @@ char **brust_node_read(struct brust_node *node, char **dest)
         {
             if (node->data[i])
             {
-                dest = brust_node_read(node->data[i], dest);
+                dest = brust1_node_read(node->data[i], dest);
             }
         }
         return dest;
@@ -688,19 +840,19 @@ char **brust_node_read(struct brust_node *node, char **dest)
     return dest;
 }
 
-void brust_sort(char **index, size_t length)
+void brust1_sort(char **index, size_t length)
 {
-    brust_pool_allocated = 1024 * CNT;
-    brust_pool = malloc(sizeof(*brust_pool) * brust_pool_allocated);
-    brust_pool_used = 0;
-    brust_equal_pool_used = 0;
-    struct brust_node *root = brust_node_allocate();
+    brust1_pool_allocated = 1024 * CNT;
+    brust1_pool = malloc(sizeof(*brust1_pool) * brust1_pool_allocated);
+    brust1_pool_used = 0;
+    brust1_equal_pool_used = 0;
+    struct brust1_node *root = brust1_node_allocate();
     for (size_t i = 0; i < length; ++i)
     {
-        brust_node_insert(root, index[i], 0);
+        brust1_node_insert(root, index[i], 0);
     }
-    brust_node_read(root, index);
-    free(brust_pool);
+    brust1_node_read(root, index);
+    free(brust1_pool);
 }
 #undef L
 #undef CNT
@@ -823,7 +975,8 @@ char **brust2_node_read(struct brust2_node *node, char **dest)
     /* other */
     if (!node->leaf)
     {
-        for (size_t i = 0; i < 256; ++i)
+        /* TODO: switch on 256 without loosing speed */
+        for (size_t i = 0; i < 128; ++i)
         {
             if (node->data[i])
             {
@@ -857,7 +1010,7 @@ void brust2_sort(char **index, size_t length)
 #undef CNT
 #undef L
 
-#define L (4096 - 3)
+#define L (2048 - 3)
 #define CNT 256
 struct brust3_node_equal
 {
@@ -974,7 +1127,8 @@ char **brust3_node_read(struct brust3_node *node, char **dest)
     /* other */
     if (!node->leaf)
     {
-        for (size_t i = 0; i < 256; ++i)
+        /* TODO: switch on 256 without loosing speed */
+        for (size_t i = 0; i < 128; ++i)
         {
             if (node->data[i])
             {
@@ -1038,9 +1192,9 @@ BENCH(sort_string)
     BENCH_OPTION("1e3 x 1e5") { strings = 1000; min_string_size = max_string_size = 100000; }
     BENCH_OPTION("1e3 x 1e5 [ab]") { strings = 1000; min_string_size = max_string_size = 100000; full_alphabet = 0; }
     BENCH_OPTION("1e6 x 1e2") { strings = 1000000; min_string_size = max_string_size = 100; }
-    BENCH_OPTION("1e6 x 5e2") { strings = 1000000; min_string_size = max_string_size = 500; }
-    BENCH_OPTION("5e6 x 5e1") { strings = 5000000; min_string_size = max_string_size = 50; }
-    BENCH_OPTION("5e6 x 5e1 [ab]") { strings = 5000000; min_string_size = max_string_size = 50; full_alphabet = 0; }
+    // BENCH_OPTION("1e6 x 5e2") { strings = 1000000; min_string_size = max_string_size = 500; }
+    // BENCH_OPTION("5e6 x 5e1") { strings = 5000000; min_string_size = max_string_size = 50; }
+    // BENCH_OPTION("5e6 x 5e1 [ab]") { strings = 5000000; min_string_size = max_string_size = 50; full_alphabet = 0; }
     BENCH_OPTION("1e3 x [1e2-1e3]") { strings = 1000; min_string_size = 100; max_string_size = 1000; }
     BENCH_OPTION("1e3 x [1e4-1e5]") { strings = 1000; min_string_size = 1000; max_string_size = 100000; }
     BENCH_OPTION("1e5 x [1e2-1e3]") { strings = 100000; min_string_size = 100; max_string_size = 1000; }
@@ -1085,82 +1239,82 @@ BENCH(sort_string)
 
 
     
-//     BENCH_VARIANT("builtin + strcmp")
-//     {
-//         BENCH_RUN(0, 1)
-//         {
-//             BENCH_START
-//             {
-//                 qsort(index, strings, sizeof(index), compare_string_strcmp);
-//             }
-//             BENCH_END
-//             assert_sorted(index, strings);
-//             free(buffer);
-//             free(index);
-//         }
-//     }
-// 
-//     BENCH_VARIANT("builtin + check first byte")
-//     {
-//         BENCH_RUN(0, 1)
-//         {
-//             BENCH_START
-//             {
-//                 qsort(index, strings, sizeof(index), compare_string_strcmp_and_check_letter);
-//             }
-//             BENCH_END
-//             assert_sorted(index, strings);
-//             free(buffer);
-//             free(index);
-//         }
-//     }
-// 
-//     BENCH_VARIANT("radix LSD")
-//     {
-//         BENCH_RUN(0, 1)
-//         {
-//             BENCH_START
-//             {
-//                 radix_LSD(index, strings);
-//             }
-//             BENCH_END
-//             assert_sorted(index, strings);
-//             free(buffer);
-//             free(index);
-//         }
-//     }
-//     
-// 
-//     BENCH_VARIANT("radix MSD no fallback")
-//     {
-//         BENCH_RUN(0, 1)
-//         {
-//             BENCH_START
-//             {
-//                 radix_MSD_no_fallback(index, strings);
-//             }
-//             BENCH_END
-//             assert_sorted(index, strings);
-//             free(buffer);
-//             free(index);
-//         }
-//     }
-//     
-// 
-//     BENCH_VARIANT("radix MSD")
-//     {
-//         BENCH_RUN(0, 1)
-//         {
-//             BENCH_START
-//             {
-//                 radix_MSD(index, strings);
-//             }
-//             BENCH_END
-//             assert_sorted(index, strings);
-//             free(buffer);
-//             free(index);
-//         }
-//     }
+    BENCH_VARIANT("builtin + strcmp")
+    {
+        BENCH_RUN(0, 1)
+        {
+            BENCH_START
+            {
+                qsort(index, strings, sizeof(index), compare_string_strcmp);
+            }
+            BENCH_END
+            assert_sorted(index, strings);
+            free(buffer);
+            free(index);
+        }
+    }
+
+    BENCH_VARIANT("builtin + check first byte")
+    {
+        BENCH_RUN(0, 1)
+        {
+            BENCH_START
+            {
+                qsort(index, strings, sizeof(index), compare_string_strcmp_and_check_letter);
+            }
+            BENCH_END
+            assert_sorted(index, strings);
+            free(buffer);
+            free(index);
+        }
+    }
+
+    // BENCH_VARIANT("radix LSD")
+    // {
+    //     BENCH_RUN(0, 1)
+    //     {
+    //         BENCH_START
+    //         {
+    //             radix_LSD(index, strings);
+    //         }
+    //         BENCH_END
+    //         assert_sorted(index, strings);
+    //         free(buffer);
+    //         free(index);
+    //     }
+    // }
+    // 
+
+    BENCH_VARIANT("radix MSD no fallback")
+    {
+        BENCH_RUN(0, 1)
+        {
+            BENCH_START
+            {
+                radix_MSD_no_fallback(index, strings);
+            }
+            BENCH_END
+            assert_sorted(index, strings);
+            free(buffer);
+            free(index);
+        }
+    }
+    
+
+    BENCH_VARIANT("radix MSD")
+    {
+        BENCH_RUN(0, 1)
+        {
+            BENCH_START
+            {
+                radix_MSD(index, strings);
+            }
+            BENCH_END
+            assert_sorted(index, strings);
+            free(buffer);
+            free(index);
+        }
+    }
 //     
 // 
 //     BENCH_VARIANT("radix MSD int16")
@@ -1209,52 +1363,67 @@ BENCH(sort_string)
 //             free(index);
 //         }
 //     }
-    
-
-    BENCH_VARIANT("brust sort")
-    {
-        BENCH_RUN(0, 1)
-        {
-            BENCH_START
-            {
-                brust_sort(index, strings);
-            }
-            BENCH_END
-            assert_sorted(index, strings);
-            free(buffer);
-            free(index);
-        }
-    }
-    
-
-    BENCH_VARIANT("brust2 sort")
-    {
-        BENCH_RUN(0, 1)
-        {
-            BENCH_START
-            {
-                brust2_sort(index, strings);
-            }
-            BENCH_END
-            assert_sorted(index, strings);
-            free(buffer);
-            free(index);
-        }
-    }
-    
-
-    BENCH_VARIANT("brust3 sort")
-    {
-        BENCH_RUN(0, 1)
-        {
-            BENCH_START
-            {
-                brust2_sort(index, strings);
-            }
-            BENCH_END
-            assert_sorted(index, strings);
-            free(buffer);
-            free(index);
-        }
-    }
+//     
+// 
+//     BENCH_VARIANT("brust0 128 sort")
+//     {
+//         BENCH_RUN(0, 1)
+//         {
+//             BENCH_START
+//             {
+//                 brust0_sort(index, strings);
+//             }
+//             BENCH_END
+//             assert_sorted(index, strings);
+//             free(buffer);
+//             free(index);
+//         }
+//     }
+//     
+//     BENCH_VARIANT("brust1 256 sort")
+//     {
+//         BENCH_RUN(0, 1)
+//         {
+//             BENCH_START
+//             {
+//                 brust1_sort(index, strings);
+//             }
+//             BENCH_END
+//             assert_sorted(index, strings);
+//             free(buffer);
+//             free(index);
+//         }
+//     }
+//     
+// 
+//     BENCH_VARIANT("brust2 1k sort")
+//     {
+//         BENCH_RUN(0, 1)
+//         {
+//             BENCH_START
+//             {
+//                 brust2_sort(index, strings);
+//             }
+//             BENCH_END
+//             assert_sorted(index, strings);
+//             free(buffer);
+//             free(index);
+//         }
+//     }
+//     
+// 
+//     BENCH_VARIANT("brust3 2k sort")
+//     {
+//         BENCH_RUN(0, 1)
+//         {
+//             BENCH_START
+//             {
+//                 brust3_sort(index, strings);
+//             }
+//             BENCH_END
+//             assert_sorted(index, strings);
+//             free(buffer);
+//             free(index);
+//         }
+//     }
 }

@@ -84,11 +84,18 @@ Avreg? O(NlogN*logL)
 
 simple mergesort, allocates one temporary buffer to store results.
 
-8. brust sort
+8, 9, 10, 11. brust sort
 Stable MAYBE [it is possible]
 Memory: O(N)
 Worst: O(N*L)
 Averg? O(N*logL)
 
+with basket size:
+8:  128
+9:  256
+10: 1024
+11: 2048
+
 sort building brust trie.
 it is similar to MSD radix sort, but (as autors claim) more cache-friendly.
+

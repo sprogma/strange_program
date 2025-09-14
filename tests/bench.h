@@ -1,3 +1,4 @@
+#include "math.h"
 #include "time.h"
 #include "stdio.h"
 #include "stdlib.h"
@@ -15,6 +16,9 @@
 
 #define TABLE_VARIANT_COLUMN_SIZE 22
 #define TABLE_OPTION_COLUMN_SIZE 16
+#define COLOR_OUTPUT
+#define SHOW_TOTAL_AVERAGE_TIME
+#define SHOW_TOTAL_WORST_TIME
 #define SHOW_LITTLE_TIME_IN_MICROSECONDS
 #define USE_LOG_SCALE_IN_GISTOGRAM
 
@@ -126,6 +130,8 @@ const char *current_option = NULL;
 const char *option_names[64] = {};
 const char *variant_names[64] = {};
 /* variant option */
+double measurements_best[64] = {};
+double measurements_worst[64] = {};
 double measurements[64][64] = {};
 int option_completed[64] = {};
 int variant_completed[64] = {};
@@ -315,25 +321,140 @@ delta = 0.18
     {
         printf("%*.*s", (int)TABLE_OPTION_COLUMN_SIZE, (int)TABLE_OPTION_COLUMN_SIZE, option_names[i]);
     }
+    #ifdef SHOW_TOTAL_WORST_TIME
+        printf("%*.*s", (int)TABLE_OPTION_COLUMN_SIZE, (int)TABLE_OPTION_COLUMN_SIZE, "Worst");
+    #endif
+    #ifdef SHOW_TOTAL_AVERAGE_TIME
+        printf("%*.*s", (int)TABLE_OPTION_COLUMN_SIZE, (int)TABLE_OPTION_COLUMN_SIZE, "Avrg");
+    #endif
     putchar('\n');
+
+    #ifdef COLOR_OUTPUT
+        #define CHECK_COL(col, tim) \
+            { \
+                double r, g, d = sqrt(measurements_worst[col] - measurements_best[col] > 0.0000001 ? ((tim) - measurements_best[col]) / (measurements_worst[col] - measurements_best[col]) : 0.5); \
+                r = (d > 0.5 ? 1.0 : d * 2.0); \
+                g = (d > 0.5 ? 2.0 - d * 2.0 : 1.0); \
+                if ((tim) == measurements_best[col]) \
+                { \
+                    printf("\033[38;2;%d;%d;%d;48;2;%d;%d;%dm", (int)(255.9 * r), (int)(255.9 * g), 0, 0, 32 + (col == 0) * 32, 0); \
+                } \
+                else if ((tim) == measurements_worst[col]) \
+                { \
+                    printf("\033[38;2;%d;%d;%d;48;2;%d;%d;%dm", (int)(255.9 * r), (int)(255.9 * g), 0, 32 + (col == 0) * 32, 0, 0); \
+                } \
+                else \
+                { \
+                    printf("\033[38;2;%d;%d;%d;48;2;%d;%d;%dm", (int)(255.9 * r), (int)(255.9 * g), 0, 0, 0, 0); \
+                } \
+            }
+        #define CHECK_COL_END(...) \
+            printf("\033[0m \b");
+    #else
+        #define CHECK_COL(...)
+        #define CHECK_COL_END(...)
+    #endif
+    
+    #ifdef SHOW_LITTLE_TIME_IN_MICROSECONDS
+    #define PRINT_TIME(col, tim) \
+        CHECK_COL(col, tim) \
+        if ((tim) * 1e3 < 10.0) \
+        { \
+            printf("%*.3lf us", (int)TABLE_OPTION_COLUMN_SIZE - 3, (tim) * 1e6); \
+        } \
+        else \
+        { \
+            printf("%*.3lf ms", (int)TABLE_OPTION_COLUMN_SIZE - 3, (tim) * 1e3); \
+        } \
+        CHECK_COL_END()
+    #else
+    #define PRINT_TIME(tim) \
+        printf("%*.3lf ms", (int)TABLE_OPTION_COLUMN_SIZE - 3, (tim) * 1e3); \
+        CHECK_COL_END()
+    #endif
+
+    memset(measurements_worst, 0, sizeof(measurements_worst));
+    for (size_t j = 0; j < sizeof(measurements_best) / sizeof(*measurements_best); ++j)
+    {
+        measurements_best[j] = INFINITY;
+    }
+    
+    for (int i = 1; variant_names[i]; ++i)
+    {
+        #ifdef SHOW_TOTAL_WORST_TIME
+            double worst = 0.0;
+        #endif
+        #ifdef SHOW_TOTAL_AVERAGE_TIME
+            double avrg = 0.0;
+        #endif
+        for (int j = 1; option_names[j]; ++j)
+        {
+            if (measurements[i][j] > measurements_worst[j])
+            {
+                measurements_worst[j] = measurements[i][j];
+            }
+            if (measurements[i][j] < measurements_best[j])
+            {
+                measurements_best[j] = measurements[i][j];
+            }
+            #ifdef SHOW_TOTAL_WORST_TIME
+                if (measurements[i][j] > worst)
+                {
+                    worst = measurements[i][j];
+                }
+            #endif
+            #ifdef SHOW_TOTAL_AVERAGE_TIME
+                avrg += measurements[i][j];
+            #endif
+        }
+        #ifdef SHOW_TOTAL_WORST_TIME
+            if (worst > measurements_worst[0])
+            {
+                measurements_worst[0] = worst;
+            }
+            if (worst < measurements_best[0])
+            {
+                measurements_best[0] = worst;
+            }
+        #endif
+        #ifdef SHOW_TOTAL_AVERAGE_TIME
+            if (avrg > measurements_worst[((int)sizeof(measurements_best)/sizeof(*measurements_best)) - 1])
+            {
+                measurements_worst[((int)sizeof(measurements_best)/sizeof(*measurements_best)) - 1] = avrg;
+            }
+            if (avrg < measurements_best[((int)sizeof(measurements_best)/sizeof(*measurements_best)) - 1])
+            {
+                measurements_best[((int)sizeof(measurements_best)/sizeof(*measurements_best)) - 1] = avrg;
+            }
+        #endif
+    }
+
     for (int i = 1; variant_names[i]; ++i)
     {
         printf("%-*.*s", (int)TABLE_VARIANT_COLUMN_SIZE, (int)TABLE_VARIANT_COLUMN_SIZE, variant_names[i]);
+        double worst = 0.0;
+        #ifdef SHOW_TOTAL_AVERAGE_TIME
+            double avrg = 0.0;
+        #endif
         for (int j = 1; option_names[j]; ++j)
         {
-            #ifdef SHOW_LITTLE_TIME_IN_MICROSECONDS
-            if (measurements[i][j] * 1e3 < 10.0)
-            {
-                printf("%*.3lf us", (int)TABLE_OPTION_COLUMN_SIZE - 3, measurements[i][j] * 1e6);
-            }
-            else
-            {
+            #ifdef SHOW_TOTAL_WORST_TIME
+                if (measurements[i][j] > worst)
+                {
+                    worst = measurements[i][j];
+                }
             #endif
-                printf("%*.3lf ms", (int)TABLE_OPTION_COLUMN_SIZE - 3, measurements[i][j] * 1e3);
-            #ifdef SHOW_LITTLE_TIME_IN_MICROSECONDS
-            }
+            #ifdef SHOW_TOTAL_AVERAGE_TIME
+                avrg += measurements[i][j];
             #endif
+            PRINT_TIME(j, measurements[i][j])
         }
+        #ifdef SHOW_TOTAL_WORST_TIME
+            PRINT_TIME(0, worst)
+        #endif
+        #ifdef SHOW_TOTAL_AVERAGE_TIME
+            PRINT_TIME(((int)sizeof(measurements_best)/sizeof(*measurements_best)) - 1, avrg)
+        #endif
         putchar('\n');
     }
     puts("\n\n");
@@ -352,7 +473,7 @@ DECLARE_MACRO(BENCH_FUNCTION)
 #endif
 
 int cnt = 0;
-int main( void )
+int main(void)
 {
     /* iterate functions */
     #ifdef BENCH_FUNCTION
