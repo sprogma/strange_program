@@ -8,3 +8,5 @@ a
 10mb.txt
 100mb.txt
 1000mb.txt
+tests/radix_sort/*
+tests/radix_sort_bak/*

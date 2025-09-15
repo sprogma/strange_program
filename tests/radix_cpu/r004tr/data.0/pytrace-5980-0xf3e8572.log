@@ -1,0 +1,26 @@
+
+4556 : 0x1c0f3ea357 : 3 : logger_init :  LOG FILE OPENED (by collectunits.logger), level: 4
+4556 : 0x1c0f3eae81 : 4 : pytrace_try_probe_python_functions :  Python version is detected as == 0x0
+4556 : 0x1c0f42714d : 4 : pytrace_try_probe_python_functions :  Python version is detected as == 0x0
+4556 : 0x1c0f435452 : 4 : pytrace_try_probe_python_functions :  Python version is detected as == 0x0
+4556 : 0x1c0f4b20d1 : 4 : pytrace_try_probe_python_functions :  Python version is detected as == 0x0
+4556 : 0x1c0f4b8efb : 4 : pytrace_try_probe_python_functions :  Python version is detected as == 0x0
+4556 : 0x1c0f4d1ae2 : 4 : pytrace_try_probe_python_functions :  Python version is detected as == 0x0
+4556 : 0x1c0f55943a : 4 : pytrace_try_probe_python_functions :  Python version is detected as == 0x0
+4556 : 0x1c0f574a29 : 4 : pytrace_try_probe_python_functions :  Python version is detected as == 0x0
+4556 : 0x1c0f598073 : 4 : pytrace_try_probe_python_functions :  Python version is detected as == 0x0
+4556 : 0x1c0f5fcfea : 4 : pytrace_try_probe_python_functions :  Python version is detected as == 0x0
+4556 : 0x1c0f6037cf : 4 : pytrace_start_profiling :  [CALLED]
+4556 : 0x1c0f60453f : 4 : pytrace_try_probe_python_functions :  Python version is detected as == 0x0
+4556 : 0x1c0f6161fd : 4 : pytrace_try_probe_python_functions :  Python version is detected as == 0x0
+4556 : 0x1c0f62148c : 4 : pytrace_try_probe_python_functions :  Python version is detected as == 0x0
+4556 : 0x1c0f654689 : 4 : pytrace_try_probe_python_functions :  Python version is detected as == 0x0
+4556 : 0x1c0f65ceb6 : 4 : pytrace_try_probe_python_functions :  Python version is detected as == 0x0
+4556 : 0x1c0f662960 : 4 : pytrace_try_probe_python_functions :  Python version is detected as == 0x0
+4556 : 0x1c0f66e3f7 : 4 : pytrace_try_probe_python_functions :  Python version is detected as == 0x0
+4556 : 0x1c0f67eaf1 : 4 : pytrace_try_probe_python_functions :  Python version is detected as == 0x0
+4556 : 0x1c0f686f12 : 4 : pytrace_try_probe_python_functions :  Python version is detected as == 0x0
+4556 : 0x1c0f68abe3 : 4 : pytrace_try_probe_python_functions :  Python version is detected as == 0x0
+4556 : 0x1c0f691762 : 4 : pytrace_try_probe_python_functions :  Python version is detected as == 0x0
+4556 : 0x1c14370deb : 4 : pytrace_stop_profiling :  [CALLED]
+4556 : 0x1c14370e43 : 3 : logger_fini :  LOG FILE CLOSED (by collectunits.logger)

@@ -5,7 +5,7 @@
 #include "omp.h"
 
 #ifdef _WIN32
-    #include "windows.h"    
+    #include "windows.h"
 #else
     #include "fcntl.h"
     #include "unistd.h"
@@ -21,13 +21,13 @@
 
 
 
-// #define TEST_BUILTIN
-// #define TEST_QSORT
-// #define TEST_MERGESORT
+#define TEST_BUILTIN
+#define TEST_QSORT
+#define TEST_MERGESORT
 // #define TEST_RADIX_LSD
-// #define TEST_RADIX_MSD
+#define TEST_RADIX_MSD
 #define TEST_RADIX_MSD_CPU
-// #define TEST_BRUST
+#define TEST_BRUST
 // #define TEST_SHELL
 
 /* commented out becouse of speed */
@@ -42,21 +42,21 @@
 
 
 
-int compare_size(const void *a, const void *b) 
+int compare_size(const void *a, const void *b)
 {
     const size_t s1 = *(const size_t *)a;
     const size_t s2 = *(const size_t *)b;
     return (s1 > s2 ? 1 : s1 == s2 ? 0 : -1);
 }
 
-int compare_string_strcmp(const void *a, const void *b) 
+int compare_string_strcmp(const void *a, const void *b)
 {
     const char *s1 = *(const char **)a;
     const char *s2 = *(const char **)b;
     return strcmp(s1, s2);
 }
 
-int compare_string_strcmp_and_check_letter(const void *a, const void *b) 
+int compare_string_strcmp_and_check_letter(const void *a, const void *b)
 {
     const char *s1 = *(const char **)a;
     const char *s2 = *(const char **)b;
@@ -70,7 +70,7 @@ void radix_LSD(char **s, size_t length)
 
     char **mem_ptr_temporary_start = temporary_start;
     char **mem_ptr_temporary_end = temporary_end;
-    
+
     char **start = s;
     char **end = malloc(sizeof(*end) * length);
     size_t max_length = 0;
@@ -123,11 +123,11 @@ void radix_LSD(char **s, size_t length)
         /* swap fields */
         {
             char **tmp;
-            
+
             tmp = start;
             start = temporary_start;
             temporary_start = tmp;
-            
+
             tmp = end;
             end = temporary_end;
             temporary_end = tmp;
@@ -187,7 +187,7 @@ void radix_MSD_no_fallback_recurse(char **s, char **e, char **tmp_s, char **tmp_
     {
         size_t start = bs[i];
         size_t end = (i + 1 == 256 ? length : bs[i + 1]);
-        if (end - start == 0) 
+        if (end - start == 0)
         { }
         else if (end - start == 1)
         {
@@ -220,13 +220,13 @@ void radix_MSD_no_fallback(char **s, size_t length)
     free(tmp_e);
 }
 
-struct radix_MSD_no_fb_array
+struct radix_MSD_array
 {
     char *s;
     size_t e;
 };
 
-void radix_MSD_no_strlen_fallback_recurse(struct radix_MSD_no_fb_array *s, struct radix_MSD_no_fb_array *tmp, size_t letter, size_t length)
+void radix_MSD_no_strlen_fallback_recurse(struct radix_MSD_array *s, struct radix_MSD_array *tmp, size_t letter, size_t length)
 {
     size_t bs[256] = {};
     /* create empty baskets */
@@ -269,7 +269,7 @@ void radix_MSD_no_strlen_fallback_recurse(struct radix_MSD_no_fb_array *s, struc
     {
         size_t start = bs[i];
         size_t end = (i + 1 == 256 ? length : bs[i + 1]);
-        if (end - start == 0) 
+        if (end - start == 0)
         { }
         else if (end - start == 1)
         {
@@ -287,8 +287,8 @@ void radix_MSD_no_strlen_fallback_recurse(struct radix_MSD_no_fb_array *s, struc
 void radix_MSD_no_strlen_fallback(char **index, size_t length)
 {
     /* allocate temporary buffer */
-    struct radix_MSD_no_fb_array *s = malloc(sizeof(*s) * length);
-    struct radix_MSD_no_fb_array *tmp = malloc(sizeof(*tmp) * length);
+    struct radix_MSD_array *s = malloc(sizeof(*s) * length);
+    struct radix_MSD_array *tmp = malloc(sizeof(*tmp) * length);
     for (size_t i = 0; i < length; ++i)
     {
         s[i].s = index[i];
@@ -304,15 +304,9 @@ void radix_MSD_no_strlen_fallback(char **index, size_t length)
 }
 
 
-struct radix_MSD_array
-{
-    char *s;
-    size_t e;
-};
-
 
 size_t radix_MSD_qsort_compare_offset = 0;
-int radix_MSD_qsort_compare_string_strcmp(const void *a, const void *b) 
+int radix_MSD_qsort_compare_string_strcmp(const void *a, const void *b)
 {
     const struct radix_MSD_array s1 = *(const struct radix_MSD_array *)a;
     const struct radix_MSD_array s2 = *(const struct radix_MSD_array *)b;
@@ -363,7 +357,7 @@ void radix_MSD_recurse(struct radix_MSD_array *s, struct radix_MSD_array *tmp, s
     {
         size_t start = bs[i];
         size_t end = (i + 1 == 256 ? length : bs[i + 1]);
-        if (end - start == 0) 
+        if (end - start == 0)
         { }
         else if (end - start == 1)
         {
@@ -387,7 +381,7 @@ void radix_MSD_recurse(struct radix_MSD_array *s, struct radix_MSD_array *tmp, s
 void radix_MSD(char **index, size_t length)
 {
     if (length < 1024)
-    {   
+    {
         qsort(index, length, sizeof(*index), compare_string_strcmp);
         return;
     }
@@ -421,11 +415,11 @@ void radix_MSD_int16_recurse(struct radix_MSD_array *s, struct radix_MSD_array *
         unsigned char resA = 0, resB = 0;
         if (s[i].e != (size_t)-1)
         {
-            resA = s[i].s[2 * letter];
+            resA = s[i].s[letter];
         }
-        if (s[i].e != (size_t)-1 && s[i].s[2 * letter] != 0)
+        if (s[i].e != (size_t)-1 && resA != 0)
         {
-            resB = s[i].s[2 * letter + 1];
+            resB = s[i].s[letter + 1];
         }
         uint16_t res = (resA << 8) | resB;
         bs[res]++;
@@ -439,21 +433,21 @@ void radix_MSD_int16_recurse(struct radix_MSD_array *s, struct radix_MSD_array *
     for (size_t i = length - 1; i < length; --i)
     {
         unsigned char resA = 0, resB = 0;
-        if (s[i].s[2 * letter] == 0)
+        if (s[i].s[letter] == 0)
         {
             s[i].e = -1;
         }
         if (s[i].e != (size_t)-1)
         {
-            resB = s[i].s[2 * letter + 1];
+            resB = s[i].s[letter + 1];
         }
-        if (s[i].s[2 * letter + 1] == 0)
+        if (s[i].s[letter + 1] == 0)
         {
             s[i].e = -1;
         }
         if (s[i].e != (size_t)-1)
         {
-            resA = s[i].s[2 * letter];
+            resA = s[i].s[letter];
         }
         uint16_t res = (resA << 8) | resB;
         bs[res]--;
@@ -470,7 +464,7 @@ void radix_MSD_int16_recurse(struct radix_MSD_array *s, struct radix_MSD_array *
             memcpy(s + start, tmp + start, sizeof(*s) * (end - start));
             continue;
         }
-        if (end - start == 0) 
+        if (end - start == 0)
         { }
         else if (end - start == 1)
         {
@@ -478,7 +472,6 @@ void radix_MSD_int16_recurse(struct radix_MSD_array *s, struct radix_MSD_array *
         }
         else if (end - start < 1024)
         {
-            radix_MSD_qsort_compare_offset = 2 * letter;
             memcpy(s + start, tmp + start, sizeof(*s) * (end - start));
             qsort(s + start, end - start, sizeof(*s), radix_MSD_qsort_compare_string_strcmp);
         }
@@ -489,7 +482,7 @@ void radix_MSD_int16_recurse(struct radix_MSD_array *s, struct radix_MSD_array *
         // }
         else
         {
-            radix_MSD_int16_recurse(tmp + start, s + start, letter + 1, end - start);
+            radix_MSD_int16_recurse(tmp + start, s + start, letter + 2, end - start);
             memcpy(s + start, tmp + start, sizeof(*s) * (end - start));
         }
     }
@@ -499,7 +492,7 @@ void radix_MSD_int16_recurse(struct radix_MSD_array *s, struct radix_MSD_array *
 void radix_MSD_int16(char **index, size_t length)
 {
     if (length < 1024)
-    {   
+    {
         qsort(index, length, sizeof(*index), compare_string_strcmp);
         return;
     }
@@ -512,7 +505,7 @@ void radix_MSD_int16(char **index, size_t length)
         s[i].e = 0;
     }
     if (length < 2048)
-    {   
+    {
         radix_MSD_recurse(s, tmp, 0, length);
     }
     else
@@ -530,24 +523,25 @@ void radix_MSD_int16(char **index, size_t length)
 
 size_t radix_MSD_cpu_block_bs[128][256];
 size_t radix_MSD_cpu_block_starts[128];
-void radix_MSD_cpu_recurse(struct radix_MSD_array *s, struct radix_MSD_array *tmp, size_t letter, size_t length)
+void radix_MSD_cpu_recurse19(struct radix_MSD_array *s, struct radix_MSD_array *tmp, size_t letter, size_t length)
 {
     /* 1. if input is less than 16384 */
-    // if (length <= 16384)
-    // {
-    //     radix_MSD_int16_recurse(s, tmp, letter, length);
-    //     return;
-    // }
+    if (length <= 524288) // 65536)
+    {
+        radix_MSD_no_strlen_fallback_recurse(s, tmp, letter, length);
+        return;
+    }
     /* 2. else - split array on blocks for each thread */
-    size_t blocks_count = 2;// omp_get_max_threads(); //omp_get_num_threads();
+    size_t blocks_count = omp_get_max_threads(); //omp_get_num_threads();
     size_t *block_starts = radix_MSD_cpu_block_starts;
     block_starts[0] = 0;
     for (size_t i = 1; i < blocks_count; ++i)
     {
         block_starts[i] = block_starts[i - 1] + length / blocks_count;
+        block_starts[i] &= ~0x3F;
     }
     /* start region: */
-    #pragma omp parallel num_threads(2)
+    #pragma omp parallel // num_threads(2)
     {
         size_t id = omp_get_thread_num();
         /* 3. initializate buffers */
@@ -556,7 +550,6 @@ void radix_MSD_cpu_recurse(struct radix_MSD_array *s, struct radix_MSD_array *tm
         /* 4. count letters */
         ssize_t start = block_starts[id];
         ssize_t end = (id + 1 < blocks_count ? block_starts[id + 1] : length);
-        printf("%zu: %zu - %zu\n", id, start, end);
         for (ssize_t i = start; i < end; ++i)
         {
             if (s[i].s[letter] == 0)
@@ -571,9 +564,9 @@ void radix_MSD_cpu_recurse(struct radix_MSD_array *s, struct radix_MSD_array *tm
             bs[res]++;
         }
         /* 6. syncronize buffers between threads */
+        #pragma omp barrier
         #pragma omp single
         {
-            // printf("EXECUTING!\n");
             size_t begin = 0;
             for (size_t backet = 0; backet < 256; ++backet)
             {
@@ -581,13 +574,10 @@ void radix_MSD_cpu_recurse(struct radix_MSD_array *s, struct radix_MSD_array *tm
                 {
                     begin += radix_MSD_cpu_block_bs[tid][backet];
                     radix_MSD_cpu_block_bs[tid][backet] = begin;
-                    // if (tid == 0)
-                    // {
-                    //     printf("[%zu] -> %zu!\n", backet, begin);
-                    // }
                 }
             }
         }
+        #pragma omp barrier
         /* 7. place elements into tmp */
         for (ssize_t i = end - 1; i >= start; --i)
         {
@@ -600,8 +590,10 @@ void radix_MSD_cpu_recurse(struct radix_MSD_array *s, struct radix_MSD_array *tm
             tmp[bs[res]] = s[i];
         }
     }
-    printf("END!\n");
-    size_t *glob_bs = radix_MSD_cpu_block_bs[0];
+
+    // printf("END!\n");
+    size_t glob_bs[256];
+    memcpy(glob_bs, radix_MSD_cpu_block_bs[0], sizeof(glob_bs));
     /* copy back first group */
     {
         memcpy(s, tmp, sizeof(*s) * glob_bs[1]);
@@ -611,8 +603,9 @@ void radix_MSD_cpu_recurse(struct radix_MSD_array *s, struct radix_MSD_array *tm
     {
         size_t start = glob_bs[i];
         size_t end = (i + 1 == 256 ? length : glob_bs[i + 1]);
-        printf("[%zu] -> s[%zu %zu]!\n", i, start, end);
-        if (end - start == 0) 
+        // printf("[%zu] -> s[%zu %zu]!\n", i, start, end);
+
+        if (end - start == 0)
         { }
         else if (end - start == 1)
         {
@@ -626,19 +619,19 @@ void radix_MSD_cpu_recurse(struct radix_MSD_array *s, struct radix_MSD_array *tm
         }
         else
         {
-            radix_MSD_cpu_recurse(tmp + start, s + start, letter + 1, end - start);
             memcpy(s + start, tmp + start, sizeof(*s) * (end - start));
+            radix_MSD_cpu_recurse19(s + start, tmp + start, letter + 1, end - start);
         }
     }
 }
 
 
-void radix_MSD_cpu(char **index, size_t length)
+void radix_MSD_cpu19(char **index, size_t length)
 {
     if (length < 1024)
-    {   
-        // qsort(index, length, sizeof(*index), compare_string_strcmp);
-        // return;
+    {
+        qsort(index, length, sizeof(*index), compare_string_strcmp);
+        return;
     }
     /* allocate temporary buffer */
     struct radix_MSD_array *s = malloc(sizeof(*s) * length);
@@ -648,7 +641,135 @@ void radix_MSD_cpu(char **index, size_t length)
         s[i].s = index[i];
         s[i].e = 0;
     }
-    radix_MSD_cpu_recurse(s, tmp, 0, length);
+    radix_MSD_cpu_recurse19(s, tmp, 0, length);
+    for (size_t i = 0; i < length; ++i)
+    {
+        index[i] = s[i].s;
+    }
+    free(tmp);
+    free(s);
+}
+
+
+void radix_MSD_cpu_recurse17(struct radix_MSD_array *s, struct radix_MSD_array *tmp, size_t letter, size_t length)
+{
+    /* 1. if input is less than 16384 */
+    if (length <= 131072)
+    {
+        radix_MSD_no_strlen_fallback_recurse(s, tmp, letter, length);
+        return;
+    }
+    /* 2. else - split array on blocks for each thread */
+    size_t blocks_count = omp_get_max_threads(); //omp_get_num_threads();
+    size_t *block_starts = radix_MSD_cpu_block_starts;
+    block_starts[0] = 0;
+    for (size_t i = 1; i < blocks_count; ++i)
+    {
+        block_starts[i] = block_starts[i - 1] + length / blocks_count;
+        block_starts[i] &= ~0x3F;
+    }
+    /* start region: */
+    #pragma omp parallel // num_threads(2)
+    {
+        size_t id = omp_get_thread_num();
+        /* 3. initializate buffers */
+        size_t *bs = radix_MSD_cpu_block_bs[id];
+        memset(bs, 0, sizeof(*bs) * 256);
+        /* 4. count letters */
+        ssize_t start = block_starts[id];
+        ssize_t end = (id + 1 < blocks_count ? block_starts[id + 1] : length);
+        for (ssize_t i = start; i < end; ++i)
+        {
+            if (s[i].s[letter] == 0)
+            {
+                s[i].e = -1;
+            }
+            unsigned char res = 0;
+            if (s[i].e != (size_t)-1)
+            {
+                res = s[i].s[letter];
+            }
+            bs[res]++;
+        }
+        /* 6. syncronize buffers between threads */
+        #pragma omp barrier
+        #pragma omp single
+        {
+            size_t begin = 0;
+            for (size_t backet = 0; backet < 256; ++backet)
+            {
+                for (size_t tid = 0; tid < blocks_count; ++tid)
+                {
+                    begin += radix_MSD_cpu_block_bs[tid][backet];
+                    radix_MSD_cpu_block_bs[tid][backet] = begin;
+                }
+            }
+        }
+        #pragma omp barrier
+        /* 7. place elements into tmp */
+        for (ssize_t i = end - 1; i >= start; --i)
+        {
+            unsigned char res = 0;
+            if (s[i].e != (size_t)-1)
+            {
+                res = s[i].s[letter];
+            }
+            bs[res]--;
+            tmp[bs[res]] = s[i];
+        }
+    }
+
+    // printf("END!\n");
+    size_t glob_bs[256];
+    memcpy(glob_bs, radix_MSD_cpu_block_bs[0], sizeof(glob_bs));
+    /* copy back first group */
+    {
+        memcpy(s, tmp, sizeof(*s) * glob_bs[1]);
+    }
+    /* call recursive sorts, if block */
+    for (size_t i = 1; i < 256; ++i)
+    {
+        size_t start = glob_bs[i];
+        size_t end = (i + 1 == 256 ? length : glob_bs[i + 1]);
+        // printf("[%zu] -> s[%zu %zu]!\n", i, start, end);
+
+        if (end - start == 0)
+        { }
+        else if (end - start == 1)
+        {
+            s[start] = tmp[start];
+        }
+        else if (end - start < 1024)
+        {
+            radix_MSD_qsort_compare_offset = letter;
+            memcpy(s + start, tmp + start, sizeof(*s) * (end - start));
+            qsort(s + start, end - start, sizeof(*s), radix_MSD_qsort_compare_string_strcmp);
+        }
+        else
+        {
+            memcpy(s + start, tmp + start, sizeof(*s) * (end - start));
+            radix_MSD_cpu_recurse17(s + start, tmp + start, letter + 1, end - start);
+        }
+    }
+}
+
+
+void radix_MSD_cpu17(char **index, size_t length)
+{
+    if (length < 1024)
+    {
+        qsort(index, length, sizeof(*index), compare_string_strcmp);
+        return;
+    }
+    /* allocate temporary buffer */
+    struct radix_MSD_array *s = malloc(sizeof(*s) * length);
+    struct radix_MSD_array *tmp = malloc(sizeof(*tmp) * length);
+    for (size_t i = 0; i < length; ++i)
+    {
+        s[i].s = index[i];
+        s[i].e = 0;
+    }
+    radix_MSD_cpu_recurse17(s, tmp, 0, length);
     for (size_t i = 0; i < length; ++i)
     {
         index[i] = s[i].s;
@@ -711,7 +832,7 @@ void radix_MSD_cpu(char **index, size_t length)
 //     {
 //         size_t start = bs[i];
 //         size_t end = (i + 1 == 256 ? length : bs[i + 1]);
-//         if (end - start == 0) 
+//         if (end - start == 0)
 //         { }
 //         else if (end - start == 1)
 //         {
@@ -730,12 +851,12 @@ void radix_MSD_cpu(char **index, size_t length)
 //         }
 //     }
 // }
-// 
-// 
+//
+//
 // void radix_MSD_gpu(char **index, size_t length)
 // {
 //     if (length < 1024)
-//     {   
+//     {
 //         qsort(index, length, sizeof(*index), compare_string_strcmp);
 //         return;
 //     }
@@ -1517,7 +1638,7 @@ void shell_pass(char **array, size_t size, size_t step)
 {
     for (size_t i = step; i < size; ++i) {
         size_t from = i - step;
-        for (size_t j = from; j <= from && strcmp(array[j], array[j + step]) > 0; j -= step) 
+        for (size_t j = from; j <= from && strcmp(array[j], array[j + step]) > 0; j -= step)
         {
             char *temp = array[j];
             array[j] = array[j + step];
@@ -1571,46 +1692,46 @@ void shell_sort_tokuda(char **index, size_t length)
     shell_pass(index, length, 1);
 }
 
-// static inline int batcher_odd_even_strcmp(const char *a, const char *b) 
+// static inline int batcher_odd_even_strcmp(const char *a, const char *b)
 // {
 //     if (a == b) return 0;
 //     if (a == NULL) return 1;
 //     if (b == NULL) return -1;
 //     return strcmp(a, b);
 // }
-// 
+//
 // void batcher_odd_even_sort(char **arr, size_t n)
 // {
 //     if (n <= 1) return;
-// 
+//
 //     size_t p = 1LLU << (64 - __builtin_clzll(n));
 //     while (p < n)
 //     {
 //         p <<= 1LLU;
 //     }
-// 
+//
 //     char **buf = malloc(p * sizeof(char *));
 //     memcpy(buf, arr, sizeof(*buf) * n);
 //     memset(buf + n, 0, sizeof(*buf) * (p - n));
-// 
-//     for (size_t block = 2; block <= p; block <<= 1) 
+//
+//     for (size_t block = 2; block <= p; block <<= 1)
 //     {
 //         #pragma omp parallel for
-//         for (size_t lo = 0; lo < p; lo += block) 
+//         for (size_t lo = 0; lo < p; lo += block)
 //         {
 //             // printf("Thread %d/%d!\n", omp_get_thread_num(), omp_get_num_threads());
 //             /* sort block */
 //             for (size_t k = block >> 1; k > 0; k >>= 1)
 //             {
-//                 for (size_t j = k; j > 0; j >>= 1) 
+//                 for (size_t j = k; j > 0; j >>= 1)
 //                 {
-//                     for (size_t i = 0; i + j < block; ++i) 
+//                     for (size_t i = 0; i + j < block; ++i)
 //                     {
 //                         if ((i & k) == 0)
 //                         {
 //                             size_t idx1 = lo + i;
 //                             size_t idx2 = lo + i + j;
-//                             if (batcher_odd_even_strcmp(buf[idx1], buf[idx2]) > 0) 
+//                             if (batcher_odd_even_strcmp(buf[idx1], buf[idx2]) > 0)
 //                             {
 //                                 char *tmp = buf[idx1];
 //                                 buf[idx1] = buf[idx2];
@@ -1622,7 +1743,7 @@ void shell_sort_tokuda(char **index, size_t length)
 //             }
 //         }
 //     }
-// 
+//
 //     memcpy(arr, buf, sizeof(*arr) * n);
 //     free(buf);
 // }
@@ -1691,7 +1812,7 @@ BENCH(sort_string)
             else
             {
                 if (full_alphabet)
-                {   
+                {
                     buffer[id++] = rand() % (127 - ' ') + ' ';
                 }
                 else
@@ -1709,7 +1830,7 @@ BENCH(sort_string)
     printf("Run %d %d %d ?\n", (int)strings, (int)min_string_size, (int)max_string_size);
 
 
-    
+
 #ifdef TEST_BUILTIN
     BENCH_VARIANT("builtin + strcmp")
     {
@@ -1721,9 +1842,9 @@ BENCH(sort_string)
             }
             BENCH_END
             assert_sorted(index, strings);
-            free(buffer);
-            free(index);
         }
+        free(buffer);
+        free(index);
     }
 
     BENCH_VARIANT("builtin + check first byte")
@@ -1736,9 +1857,9 @@ BENCH(sort_string)
             }
             BENCH_END
             assert_sorted(index, strings);
-            free(buffer);
-            free(index);
         }
+        free(buffer);
+        free(index);
     }
 #endif
 
@@ -1753,12 +1874,12 @@ BENCH(sort_string)
             }
             BENCH_END
             assert_sorted(index, strings);
-            free(buffer);
-            free(index);
         }
+        free(buffer);
+        free(index);
     }
 #endif
-    
+
 
 #ifdef TEST_RADIX_MSD
     BENCH_VARIANT("radix MSD no fallback")
@@ -1771,11 +1892,11 @@ BENCH(sort_string)
             }
             BENCH_END
             assert_sorted(index, strings);
-            free(buffer);
-            free(index);
         }
+        free(buffer);
+        free(index);
     }
-    
+
 
     BENCH_VARIANT("radix MSD no sqort,strlen")
     {
@@ -1787,11 +1908,11 @@ BENCH(sort_string)
             }
             BENCH_END
             assert_sorted(index, strings);
-            free(buffer);
-            free(index);
         }
+        free(buffer);
+        free(index);
     }
-    
+
 
     BENCH_VARIANT("radix MSD")
     {
@@ -1803,11 +1924,11 @@ BENCH(sort_string)
             }
             BENCH_END
             assert_sorted(index, strings);
-            free(buffer);
-            free(index);
         }
+        free(buffer);
+        free(index);
     }
-    
+
 
     BENCH_VARIANT("radix MSD int16")
     {
@@ -1819,30 +1940,45 @@ BENCH(sort_string)
             }
             BENCH_END
             assert_sorted(index, strings);
-            free(buffer);
-            free(index);
         }
+        free(buffer);
+        free(index);
     }
 #endif
-    
+
 
 #ifdef TEST_RADIX_MSD_CPU
-    BENCH_VARIANT("radix MSD cpu")
+    BENCH_VARIANT("radix MSD cpu 2^{19}")
     {
         BENCH_RUN(0, 1)
         {
             BENCH_START
             {
-                radix_MSD_cpu(index, strings);
+                radix_MSD_cpu19(index, strings);
             }
             BENCH_END
             assert_sorted(index, strings);
-            free(buffer);
-            free(index);
         }
+        free(buffer);
+        free(index);
+    }
+
+    BENCH_VARIANT("radix MSD cpu 2^{17}")
+    {
+        BENCH_RUN(0, 1)
+        {
+            BENCH_START
+            {
+                radix_MSD_cpu17(index, strings);
+            }
+            BENCH_END
+            assert_sorted(index, strings);
+        }
+        free(buffer);
+        free(index);
     }
 #endif
-    
+
 
 #ifdef TEST_RADIX_MSD_GPU
     BENCH_VARIANT("radix MSD gpu")
@@ -1855,12 +1991,12 @@ BENCH(sort_string)
             }
             BENCH_END
             assert_sorted(index, strings);
-            free(buffer);
-            free(index);
         }
+        free(buffer);
+        free(index);
     }
 #endif
-    
+
 
 #ifdef TEST_QSORT
     BENCH_VARIANT("simple qsort")
@@ -1873,12 +2009,12 @@ BENCH(sort_string)
             }
             BENCH_END
             assert_sorted(index, strings);
-            free(buffer);
-            free(index);
         }
+        free(buffer);
+        free(index);
     }
 #endif
-    
+
 
 #ifdef TEST_MERGESORT
     BENCH_VARIANT("simple mergesort")
@@ -1891,12 +2027,12 @@ BENCH(sort_string)
             }
             BENCH_END
             assert_sorted(index, strings);
-            free(buffer);
-            free(index);
         }
+        free(buffer);
+        free(index);
     }
 #endif
-    
+
 
 #ifdef TEST_BRUST
     BENCH_VARIANT("brust0 128 sort")
@@ -1909,11 +2045,11 @@ BENCH(sort_string)
             }
             BENCH_END
             assert_sorted(index, strings);
-            free(buffer);
-            free(index);
         }
+        free(buffer);
+        free(index);
     }
-    
+
     BENCH_VARIANT("brust1 256 sort")
     {
         BENCH_RUN(0, 1)
@@ -1924,11 +2060,11 @@ BENCH(sort_string)
             }
             BENCH_END
             assert_sorted(index, strings);
-            free(buffer);
-            free(index);
         }
+        free(buffer);
+        free(index);
     }
-    
+
 
     BENCH_VARIANT("brust2 1k sort")
     {
@@ -1940,11 +2076,11 @@ BENCH(sort_string)
             }
             BENCH_END
             assert_sorted(index, strings);
-            free(buffer);
-            free(index);
         }
+        free(buffer);
+        free(index);
     }
-    
+
 
     BENCH_VARIANT("brust3 2k sort")
     {
@@ -1956,9 +2092,9 @@ BENCH(sort_string)
             }
             BENCH_END
             assert_sorted(index, strings);
-            free(buffer);
-            free(index);
         }
+        free(buffer);
+        free(index);
     }
 #endif
 
@@ -1973,9 +2109,9 @@ BENCH(sort_string)
             }
             BENCH_END
             assert_sorted(index, strings);
-            free(buffer);
-            free(index);
         }
+        free(buffer);
+        free(index);
     }
 
     /* IT WAS TOO SLOW! */
@@ -1992,8 +2128,8 @@ BENCH(sort_string)
     //         free(buffer);
     //         free(index);
     //     }
-    // } 
-     
+    // }
+
     BENCH_VARIANT("shell pratt")
     {
         BENCH_RUN(0, 1)
@@ -2004,11 +2140,11 @@ BENCH(sort_string)
             }
             BENCH_END
             assert_sorted(index, strings);
-            free(buffer);
-            free(index);
         }
-    } 
-     
+        free(buffer);
+        free(index);
+    }
+
     BENCH_VARIANT("shell tokuda")
     {
         BENCH_RUN(0, 1)
@@ -2019,10 +2155,10 @@ BENCH(sort_string)
             }
             BENCH_END
             assert_sorted(index, strings);
-            free(buffer);
-            free(index);
         }
-    }  
+        free(buffer);
+        free(index);
+    }
 #endif
 
 // #ifdef TEST_BATCHER_ODDEVEN
@@ -2036,9 +2172,9 @@ BENCH(sort_string)
 //             }
 //             BENCH_END
 //             assert_sorted(index, strings);
-//             free(buffer);
-//             free(index);
 //         }
+//        free(buffer);
+//        free(index);
 //     }
 // #endif
 
