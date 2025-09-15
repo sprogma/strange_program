@@ -1771,29 +1771,8 @@ void assert_sorted(char **index, size_t length)
 }
 
 
-
-BENCH(sort_string)
+void create(char *buffer, char **index, size_t strings, size_t min_string_size, size_t max_string_size, size_t full_alphabet)
 {
-    char *buffer;
-    char **index;
-    size_t strings = 0;
-    size_t min_string_size = 0;
-    size_t max_string_size = 0;
-    size_t full_alphabet = 1;
-    BENCH_OPTION("1e3 x 1e2") { strings = 1000; min_string_size = max_string_size = 100; }
-    BENCH_OPTION("1e3 x 1e5") { strings = 1000; min_string_size = max_string_size = 100000; }
-    BENCH_OPTION("1e3 x 1e5 [ab]") { strings = 1000; min_string_size = max_string_size = 100000; full_alphabet = 0; }
-    BENCH_OPTION("1e6 x 1e2") { strings = 1000000; min_string_size = max_string_size = 100; }
-    BENCH_OPTION("1e6 x 5e2") { strings = 1000000; min_string_size = max_string_size = 500; }
-    BENCH_OPTION("5e6 x 5e1") { strings = 5000000; min_string_size = max_string_size = 50; }
-    BENCH_OPTION("5e6 x 5e1 [ab]") { strings = 5000000; min_string_size = max_string_size = 50; full_alphabet = 0; }
-    BENCH_OPTION("1e3 x [1e2-1e3]") { strings = 1000; min_string_size = 100; max_string_size = 1000; }
-    BENCH_OPTION("1e3 x [1e4-1e5]") { strings = 1000; min_string_size = 1000; max_string_size = 100000; }
-    BENCH_OPTION("1e5 x [1e2-1e3]") { strings = 100000; min_string_size = 100; max_string_size = 1000; }
-
-    srand(1);
-    buffer = malloc(strings * (max_string_size + 1));
-    index = malloc(sizeof(*index) * (strings + 1));
     {
         size_t add_zero = 0, len = 0, id = 0, ind = 0, add_strings = strings;
         while (add_strings > 0 || (add_strings == 0 && len > 0))
@@ -1824,18 +1803,49 @@ BENCH(sort_string)
         }
         buffer[id++] = '\0';
     }
+}
+
+
+BENCH(sort_string)
+{
+    char *buffer;
+    char **index;
+    size_t strings = 0;
+    size_t min_string_size = 0;
+    size_t max_string_size = 0;
+    size_t full_alphabet = 1;
+    BENCH_OPTION("1e3 x 1e2") { strings = 1000; min_string_size = max_string_size = 100; }
+    BENCH_OPTION("1e3 x 1e5") { strings = 1000; min_string_size = max_string_size = 100000; }
+    BENCH_OPTION("1e3 x 1e5 [ab]") { strings = 1000; min_string_size = max_string_size = 100000; full_alphabet = 0; }
+    BENCH_OPTION("1e6 x 1e2") { strings = 1000000; min_string_size = max_string_size = 100; }
+    BENCH_OPTION("1e6 x 5e2") { strings = 1000000; min_string_size = max_string_size = 500; }
+    BENCH_OPTION("5e6 x 5e1") { strings = 5000000; min_string_size = max_string_size = 50; }
+    BENCH_OPTION("5e6 x 5e1 [ab]") { strings = 5000000; min_string_size = max_string_size = 50; full_alphabet = 0; }
+    BENCH_OPTION("1e3 x [1e2-1e3]") { strings = 1000; min_string_size = 100; max_string_size = 1000; }
+    BENCH_OPTION("1e3 x [1e4-1e5]") { strings = 1000; min_string_size = 1000; max_string_size = 100000; }
+    BENCH_OPTION("1e5 x [1e2-1e3]") { strings = 100000; min_string_size = 100; max_string_size = 1000; }
+
+    srand(1);
 
 
 
     printf("Run %d %d %d ?\n", (int)strings, (int)min_string_size, (int)max_string_size);
 
-
+    #define ALLOCATE_STRING \
+        buffer = malloc(strings * (max_string_size + 1)); \
+        index = malloc(sizeof(*index) * (strings + 1));
+        
+    #define BUILD_STRING \
+        create(buffer, index, strings, min_string_size, max_string_size, full_alphabet);
+        
+    ALLOCATE_STRING
 
 #ifdef TEST_BUILTIN
     BENCH_VARIANT("builtin + strcmp")
     {
         BENCH_RUN(0, 1)
         {
+            BUILD_STRING
             BENCH_START
             {
                 qsort(index, strings, sizeof(*index), compare_string_strcmp);
@@ -1851,6 +1861,7 @@ BENCH(sort_string)
     {
         BENCH_RUN(0, 1)
         {
+            BUILD_STRING
             BENCH_START
             {
                 qsort(index, strings, sizeof(*index), compare_string_strcmp_and_check_letter);
@@ -1868,6 +1879,7 @@ BENCH(sort_string)
     {
         BENCH_RUN(0, 1)
         {
+            BUILD_STRING
             BENCH_START
             {
                 radix_LSD(index, strings);
@@ -1886,6 +1898,7 @@ BENCH(sort_string)
     {
         BENCH_RUN(0, 1)
         {
+            BUILD_STRING
             BENCH_START
             {
                 radix_MSD_no_fallback(index, strings);
@@ -1902,6 +1915,7 @@ BENCH(sort_string)
     {
         BENCH_RUN(0, 1)
         {
+            BUILD_STRING
             BENCH_START
             {
                 radix_MSD_no_strlen_fallback(index, strings);
@@ -1918,6 +1932,7 @@ BENCH(sort_string)
     {
         BENCH_RUN(0, 1)
         {
+            BUILD_STRING
             BENCH_START
             {
                 radix_MSD(index, strings);
@@ -1934,6 +1949,7 @@ BENCH(sort_string)
     {
         BENCH_RUN(0, 1)
         {
+            BUILD_STRING
             BENCH_START
             {
                 radix_MSD_int16(index, strings);
@@ -1952,6 +1968,7 @@ BENCH(sort_string)
     {
         BENCH_RUN(0, 1)
         {
+            BUILD_STRING
             BENCH_START
             {
                 radix_MSD_cpu19(index, strings);
@@ -1967,6 +1984,7 @@ BENCH(sort_string)
     {
         BENCH_RUN(0, 1)
         {
+            BUILD_STRING
             BENCH_START
             {
                 radix_MSD_cpu17(index, strings);
@@ -1985,6 +2003,7 @@ BENCH(sort_string)
     {
         BENCH_RUN(0, 1)
         {
+            BUILD_STRING
             BENCH_START
             {
                 radix_MSD_gpu(index, strings);
@@ -2003,6 +2022,7 @@ BENCH(sort_string)
     {
         BENCH_RUN(0, 1)
         {
+            BUILD_STRING
             BENCH_START
             {
                 simple_qsort(index, strings);
@@ -2021,6 +2041,7 @@ BENCH(sort_string)
     {
         BENCH_RUN(0, 1)
         {
+            BUILD_STRING
             BENCH_START
             {
                 merge_sort(index, strings);
@@ -2039,6 +2060,7 @@ BENCH(sort_string)
     {
         BENCH_RUN(0, 1)
         {
+            BUILD_STRING
             BENCH_START
             {
                 brust0_sort(index, strings);
@@ -2054,6 +2076,7 @@ BENCH(sort_string)
     {
         BENCH_RUN(0, 1)
         {
+            BUILD_STRING
             BENCH_START
             {
                 brust1_sort(index, strings);
@@ -2070,6 +2093,7 @@ BENCH(sort_string)
     {
         BENCH_RUN(0, 1)
         {
+            BUILD_STRING
             BENCH_START
             {
                 brust2_sort(index, strings);
@@ -2086,6 +2110,7 @@ BENCH(sort_string)
     {
         BENCH_RUN(0, 1)
         {
+            BUILD_STRING
             BENCH_START
             {
                 brust3_sort(index, strings);
@@ -2103,6 +2128,7 @@ BENCH(sort_string)
     {
         BENCH_RUN(0, 1)
         {
+            BUILD_STRING
             BENCH_START
             {
                 shell_sort_shell(index, strings);
@@ -2119,6 +2145,7 @@ BENCH(sort_string)
     // {
     //     BENCH_RUN(0, 1)
     //     {
+    //         BUILD_STRING
     //         BENCH_START
     //         {
     //             shell_sort_hibbard(index, strings);
@@ -2134,6 +2161,7 @@ BENCH(sort_string)
     {
         BENCH_RUN(0, 1)
         {
+            BUILD_STRING
             BENCH_START
             {
                 shell_sort_pratt(index, strings);
@@ -2149,6 +2177,7 @@ BENCH(sort_string)
     {
         BENCH_RUN(0, 1)
         {
+            BUILD_STRING
             BENCH_START
             {
                 shell_sort_tokuda(index, strings);
