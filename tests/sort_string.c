@@ -30,12 +30,15 @@
 #define TEST_BRUST
 // #define TEST_SHELL
 
+
 /* commented out becouse of speed */
 // #define TEST_BATCHER_ODDEVEN
 /* not implemented */
 // #define TEST_RADIX_MSD_GPU
 
 
+/* if set, [ab] groups will be tested on full alphabet, instead of "a" and "b" strings only. */
+#define FULL_ENGLISH_ALPHABET
 
 
 
@@ -1796,7 +1799,13 @@ void create(char *buffer, char **index, size_t strings, size_t min_string_size, 
                 }
                 else
                 {
-                    buffer[id++] = rand() % 2 + 'a';
+                    buffer[id++] = rand() % 
+                    #ifdef FULL_ENGLISH_ALPHABET
+                    26
+                    #else
+                    2
+                    #endif
+                     + 'a';
                 }
                 len--;
             }
