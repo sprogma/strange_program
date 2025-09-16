@@ -1,6 +1,6 @@
 pushd $PSScriptRoot
-$warmup = 1
-$testing = 1
+$warmup = 0
+$testing = 2
 $times = gci bin | % {
     $exe = $_
     $variant = $_.Name-replace".\w*$"

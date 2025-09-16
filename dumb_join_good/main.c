@@ -5,6 +5,25 @@
 #include "string.h"
 
 
+#ifdef WIN32
+    #include "windows.h"
+    
+    #ifndef FILE_MAP_LARGE_PAGES
+    #define FILE_MAP_LARGE_PAGES 0x20000000
+    #endif
+    
+    typedef struct _MEMORY_RANGE_ENTRY {
+            PVOID VirtualAddress;
+        SIZE_T NumberOfBytes;
+    } MEMORY_RANGE_ENTRY, *PMEMORY_RANGE_ENTRY;
+    __declspec(dllimport) BOOL WINAPI PrefetchVirtualMemory(HANDLE, ULONG_PTR, PMEMORY_RANGE_ENTRY, ULONG);
+    
+#else
+    #include "fcntl.h"
+    #include "unistd.h"
+    #include "sys/stat.h"
+#endif
+
 int forward_cmp(const void *a, const void *b)
 {
     const char *x = *(const char **)a;
@@ -39,67 +58,11 @@ int backward_cmp(const void *pa, const void *pb)
     return *x - *y;
 }
 
-
-char *bad_getline(FILE *file)
-{
-    if (file == NULL)
-    {
-        return NULL;
-    }
-    if (feof(file))
-    {
-        return NULL;
-    }
-    
-    size_t allocated = 256;
-    char *memory = malloc(allocated);
-    char *s = memory, c;
-
-    while ((c = fgetc(file)) && c != EOF && c != '\n')
-    {
-        if ((size_t)(s - memory) == allocated)
-        {
-            allocated *= 2;
-            char *ptr = realloc(memory, allocated);
-            if (ptr == NULL){free(memory); printf("No memory\n"); return NULL;}
-            memory = ptr;
-        }
-        *s++ = c;
-    }
-    if ((size_t)(s - memory) == allocated)
-    {
-        allocated *= 2;
-        char *ptr = realloc(memory, allocated);
-        if (ptr == NULL){free(memory); printf("No memory\n"); return NULL;}
-        memory = ptr;
-    }
-    *s++ = 0;
-    if (s - memory == 1)
-    {
-        free(memory);
-        return NULL;
-    }
-    // if (realloc(memory, s - memory) == NULL)
-    // {
-    //     printf("ERROR: realloc with smaller size returned null.\n");
-    //     return NULL;
-    // }
-    return memory;
-}
-
-
 int main(int argc, const char **argv)
 {
     if (argc != 3)
     {
         fprintf(stderr, "get %d input files instead of 2\n", argc - 1);
-        return 1;
-    }
-
-    FILE *fi = fopen(argv[1], "rb");
-    if (fi == NULL)
-    {
-        fprintf(stderr, "Cannot find file <%s>\n", argv[1]);
         return 1;
     }
 
@@ -109,6 +72,61 @@ int main(int argc, const char **argv)
         fprintf(stderr, "Cannot find file <%s>\n", argv[1]);
         return 1;
     }
+
+    size_t content_length;
+    char *content;
+
+    #ifdef _WIN32
+        HANDLE hFile = CreateFileA(argv[1], GENERIC_READ | GENERIC_WRITE,
+                   0, //  | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+                   NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+
+        if (hFile == INVALID_HANDLE_VALUE)
+        {
+            fprintf(stderr, "Cannot find file <%s>\n", argv[1]);
+            return 1;
+        }
+        LARGE_INTEGER fileSizeLi;
+        GetFileSizeEx(hFile, &fileSizeLi);
+
+        HANDLE hMap = CreateFileMappingA(hFile, NULL, PAGE_READWRITE | SEC_COMMIT, 0, 0, NULL);
+
+        content = (char *)MapViewOfFile(hMap, FILE_MAP_ALL_ACCESS | FILE_MAP_COPY, 0, 0, 0);
+        
+        content_length = (SIZE_T)fileSizeLi.QuadPart;
+
+        MEMORY_RANGE_ENTRY range;
+        range.VirtualAddress = (PVOID)content;
+        range.NumberOfBytes = content_length;
+        PrefetchVirtualMemory(GetCurrentProcess(), 1, &range, 0);
+    #else
+        int fd = open(argv[1], O_RDONLY);
+        if (fd < 0)
+        {
+            fprintf(stderr, "Cannot find file <%s>\n", argv[1]);
+            return 1;
+        }
+
+        struct stat st;
+
+        fstat(fd, &st);
+        off_t file_size = st.st_size;
+        content = calloc(file_size, 1);
+
+        ssize_t bytes_read;
+        size_t total_bytes_read = 0;
+        while ((bytes_read = read(fd, content + total_bytes_read, file_size - total_bytes_read)) > 0) 
+        {
+            total_bytes_read += bytes_read;
+        }
+
+        if (bytes_read == -1)
+        {
+            printf("Error while reading\n");
+            return 1;
+        }
+    #endif
+    
 
     size_t index_length = 0;
     size_t index_alloc = 128;
@@ -154,7 +172,6 @@ int main(int argc, const char **argv)
             putc('\n', fo);
         }
     }
-    
     /* 2. backwards alphabetic */
     {
         qsort(index, index_length, sizeof(*index), backward_cmp);
@@ -175,8 +192,17 @@ int main(int argc, const char **argv)
         }
     }
 
-    fclose(fi);
-    fclose(fo);
+    #ifdef _WIN32
+        // Cleanup
+        UnmapViewOfFile((LPCVOID)content);
+        CloseHandle(hMap);
+        CloseHandle(hFile);
+    #else
+        free(content);
+        close(fd);
+    #endif
 
+    fclose(fo);
+    
     return 0;
 }
