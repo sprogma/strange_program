@@ -75,30 +75,57 @@ int main(int argc, const char **argv)
 
     size_t content_length;
     char *content;
+    char *content_end;
 
     #ifdef _WIN32
-        HANDLE hFile = CreateFileA(argv[1], GENERIC_READ | GENERIC_WRITE,
-                   0, //  | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
-                   NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+        HANDLE hFile = CreateFileA(
+            argv[1],
+            GENERIC_READ,
+            FILE_SHARE_READ,
+            NULL,
+            OPEN_EXISTING,
+            FILE_ATTRIBUTE_NORMAL,
+            NULL
+        );
 
-        if (hFile == INVALID_HANDLE_VALUE)
-        {
-            fprintf(stderr, "Cannot find file <%s>\n", argv[1]);
+        if (hFile == INVALID_HANDLE_VALUE) {
+            printf("CreateFile failed: %lu\n", GetLastError());
             return 1;
         }
-        LARGE_INTEGER fileSizeLi;
-        GetFileSizeEx(hFile, &fileSizeLi);
 
-        HANDLE hMap = CreateFileMappingA(hFile, NULL, PAGE_READWRITE | SEC_COMMIT, 0, 0, NULL);
+        // Получаем размер файла
+        LARGE_INTEGER fileSize;
+        if (!GetFileSizeEx(hFile, &fileSize)) {
+            printf("GetFileSizeEx failed: %lu\n", GetLastError());
+            CloseHandle(hFile);
+            return 1;
+        }
 
-        content = (char *)MapViewOfFile(hMap, FILE_MAP_ALL_ACCESS | FILE_MAP_COPY, 0, 0, 0);
+        // Создаём отображение с защитой PAGE_WRITECOPY
+        HANDLE hMap = CreateFileMappingA(
+            hFile,
+            NULL,
+            PAGE_WRITECOPY,
+            0,
+            0, // отображаем весь файл
+            NULL
+        );
+
+        if (hMap == NULL) {
+            printf("CreateFileMapping failed: %lu\n", GetLastError());
+            CloseHandle(hFile);
+            return 1;
+        }
         
-        content_length = (SIZE_T)fileSizeLi.QuadPart;
+        LPVOID view = MapViewOfFile(hMap, FILE_MAP_COPY, 0, 0, 0);
 
-        MEMORY_RANGE_ENTRY range;
-        range.VirtualAddress = (PVOID)content;
-        range.NumberOfBytes = content_length;
-        PrefetchVirtualMemory(GetCurrentProcess(), 1, &range, 0);
+        if (view == NULL) {
+            printf("MapViewOfFile failed: %lu\n", GetLastError());
+            CloseHandle(hMap);
+            CloseHandle(hFile);
+            return 1;
+        }
+        content_length = fileSize.QuadPart;
     #else
         int fd = open(argv[1], O_RDONLY);
         if (fd < 0)
@@ -125,43 +152,88 @@ int main(int argc, const char **argv)
             printf("Error while reading\n");
             return 1;
         }
+        
+        content_length = file_size;
     #endif
-    
 
+    content_end = content_end + content_length;
+
+    printf("File size: %zu\n", content_length);
+
+    /* 1. read lines */
     size_t index_length = 0;
     size_t index_alloc = 128;
     char **index = malloc(sizeof(char *) * index_alloc);
-    while (1)
     {
-        if (index_length == index_alloc)
+        char *s = content;
+        printf("%p < %p < %p\n", content, s, content_end);
+        while (s < content_end)
         {
-            index_alloc = index_alloc * 2;
-            char **new_ptr = realloc(index, sizeof(char *) * index_alloc);
-            if (new_ptr == NULL)
+            if (index_length == index_alloc)
             {
-                for (size_t i = 0; i < index_length; ++i)
+                index_alloc = index_alloc * 2;
+                char **new_ptr = realloc(index, sizeof(char *) * index_alloc);
+                if (new_ptr == NULL)
                 {
-                    free(index[i]);
+                    for (size_t i = 0; i < index_length; ++i)
+                    {
+                        free(index[i]);
+                    }
+                    free(index);
+                    printf("NOT ENOUGTH MEMORY\n");
+                    return 1;
                 }
-                free(index);
-                printf("NOT ENOUGTH MEMORY\n");
-                return 1;
+                index = new_ptr;
             }
-            index = new_ptr;
+            if (!(index_length & 0xFFFF))
+            {
+                printf("read s[%zu]\n", index_length);
+            }
+            printf(">%d\n", __LINE__);
+            char *res = s;
+            printf("%d\n", *s);
+            while (*s != '\r' && *s != '\n' && s < content_end)
+            {
+                printf("%p < %p < %p\n", content, s, content_end);
+                printf("s=<%c>\n", *s);
+                s++;
+            }
+            printf(">%d\n", __LINE__);
+            // printf("%p < %p < %p\n", content, s, content_end);
+            if (s >= content_end)
+            {
+                printf(">%d\n", __LINE__);
+                if (s - res > 0)
+                {
+                    index[index_length] = malloc(s - res + 1);
+                    memcpy(index[index_length], res, s - res);
+                    index[index_length][s - res] = 0;
+                    index_length++;
+                }
+                printf(">%d\n", __LINE__);
+                break;
+            }
+            printf(">%d\n", __LINE__);
+            *s++ = 0;
+            printf(">%d\n", __LINE__);
+            if (s < content_end && *s == '\n')
+            {
+                *s++ = 0;
+            }
+            printf(">%d\n", __LINE__);
+            if (s - res > 0)
+            {
+                index[index_length++] = res;
+            }
+            printf(">%d\n", __LINE__);
         }
-        if (!(index_length & 0xFFFF))
-        {
-            printf("read s[%zu]\n", index_length);
-        }
-        char *res = bad_getline(fi);
-        if (res == NULL)
-        {
-            break;
-        }
-        index[index_length++] = res;
     }
 
     printf("read %d lines.\n", (int)index_length);
+
+    printf("[0]%s\n", index[0]);
+    printf("[1]%s\n", index[1]);
+    printf("[2]%s\n", index[2]);
 
     /* 1. alphabetic */
     {
@@ -183,7 +255,7 @@ int main(int argc, const char **argv)
     }
 
     /* 3. copying */
-    rewind(fi);
+    FILE *fi = fopen(argv[1], "rb");
     {
         char c;
         while ((c = getc(fi)) != EOF)
