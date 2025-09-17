@@ -117,9 +117,9 @@ int main(int argc, const char **argv)
             return 1;
         }
         
-        LPVOID view = MapViewOfFile(hMap, FILE_MAP_COPY, 0, 0, 0);
+        content = MapViewOfFile(hMap, FILE_MAP_COPY, 0, 0, 0);
 
-        if (view == NULL) {
+        if (content == NULL) {
             printf("MapViewOfFile failed: %lu\n", GetLastError());
             CloseHandle(hMap);
             CloseHandle(hFile);
@@ -189,20 +189,14 @@ int main(int argc, const char **argv)
             {
                 printf("read s[%zu]\n", index_length);
             }
-            printf(">%d\n", __LINE__);
             char *res = s;
-            printf("%d\n", *s);
             while (*s != '\r' && *s != '\n' && s < content_end)
             {
-                printf("%p < %p < %p\n", content, s, content_end);
-                printf("s=<%c>\n", *s);
                 s++;
             }
-            printf(">%d\n", __LINE__);
             // printf("%p < %p < %p\n", content, s, content_end);
             if (s >= content_end)
             {
-                printf(">%d\n", __LINE__);
                 if (s - res > 0)
                 {
                     index[index_length] = malloc(s - res + 1);
@@ -210,22 +204,17 @@ int main(int argc, const char **argv)
                     index[index_length][s - res] = 0;
                     index_length++;
                 }
-                printf(">%d\n", __LINE__);
                 break;
             }
-            printf(">%d\n", __LINE__);
             *s++ = 0;
-            printf(">%d\n", __LINE__);
             if (s < content_end && *s == '\n')
             {
                 *s++ = 0;
             }
-            printf(">%d\n", __LINE__);
             if (s - res > 0)
             {
                 index[index_length++] = res;
             }
-            printf(">%d\n", __LINE__);
         }
     }
 
