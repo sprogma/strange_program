@@ -7,7 +7,7 @@ gci -E bin, tests -Di | % N* | % -Pa {
     if (($f | % L*W*e) -gt (gi $o 2>$null | % L*W*e))
     {
         Write-Host "build $_ -> $o"
-        gcc $f -o $o
+        gcc $f -o $o -g -Ofast -march=native
     }
 }
 popd

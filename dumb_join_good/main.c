@@ -3,6 +3,10 @@
 #include "malloc.h"
 #include "search.h"
 #include "string.h"
+#include "inttypes.h"
+
+
+// #define DEBUG_INFO
 
 
 #ifdef WIN32
@@ -24,52 +28,124 @@
     #include "sys/stat.h"
 #endif
 
+struct MSD_array_t
+{
+    char *s;
+    char *e;
+};
+
+void sort_forward(struct MSD_array_t *index, struct MSD_array_t *tmp, size_t index_length);
+void sort_backward(struct MSD_array_t *index, struct MSD_array_t *tmp, size_t index_length);
+
 int forward_cmp(const void *a, const void *b)
 {
-    const char *x = *(const char **)a;
-    const char *y = *(const char **)b;
-    return strcmp(x, y);
+    const struct MSD_array_t *x = *(const struct MSD_array_t **)a;
+    const struct MSD_array_t *y = *(const struct MSD_array_t **)b;
+    return strcmp(x->s, y->s);
 }
 
 
 int backward_cmp(const void *pa, const void *pb)
 {
-    const char *a = *(const char **)pa;
-    const char *b = *(const char **)pb;
-    const char *x = a + strlen(a);
-    const char *y = b + strlen(b);
-    while (x >= a && y >= b && *x == *y)
+    const struct MSD_array_t *a = pa;
+    const struct MSD_array_t *b = pb;
+    const char *x = a->e - 1;
+    const char *y = b->e - 1;
+    while (x >= a->s && y >= b->s && *x == *y)
     {
         --x;
         --y;
     }
-    if (x < a && y < b)
+    if (x < a->s && y < b->s)
     {
         return 0;
     }
-    if (x < a)
+    if (x < a->s)
     {
         return -1;
     }
-    if (y < b)
+    if (y < b->s)
     {
         return 1;
     }
     return *x - *y;
 }
 
+
+#define ALIGN_PAD64(buf) ((64 - (size_t)(buf) % 64) % 64)
+char *next_newline(char *str, char *end)
+{
+    if (str == NULL)
+    {
+        return NULL;
+    }
+
+    const char *str_aligned = str + ALIGN_PAD64(str);
+
+    if (str_aligned > end)
+    {
+        str_aligned = end;
+    }
+
+    while (str < str_aligned && *str != '\r' && *str != '\n')
+    {
+        str++;
+    }
+
+    if (str >= end || *str == '\r' || *str == '\n')
+    {
+        return (char *)str;
+    }
+    
+    __m256i ymm0 = _mm256_set1_epi8('\n');
+    #ifdef _WIN32
+        __m256i ymmR = _mm256_set1_epi8('\r');
+    #endif
+
+    size_t aligned_size = (end - str) & ~0x1F;
+    while (aligned_size != 0)
+    {
+        __m256i ymm2 = _mm256_loadu_si256((__m256i *)(str +  0));
+        uint32_t msk0 = _mm256_movemask_epi8(_mm256_cmpeq_epi8(ymm2, ymm0));
+        uint32_t msk2 = _mm256_movemask_epi8(_mm256_cmpeq_epi8(ymm2, _mm256_setzero_si256()));
+        #ifdef _WIN32
+            uint32_t mskR = _mm256_movemask_epi8(_mm256_cmpeq_epi8(ymm2, ymmR));
+        #endif
+        if (msk0 | msk2
+        #ifdef _WIN32
+            | mskR
+        #endif
+        ) {
+            str += _tzcnt_u32(msk0 | msk2
+            #ifdef _WIN32
+                | mskR
+            #endif
+            );
+            return (char *)str;
+        }
+        str += 32;
+        aligned_size -= 32;
+    }
+
+    if (str >= end || *str == '\r' || *str == '\n')
+    {
+        return (char *)str;
+    }
+    
+    while (str < end && *str != '\r' && *str != '\n')
+    {
+        str++;
+    }
+    
+    return str;
+}
+
+
 int main(int argc, const char **argv)
 {
     if (argc != 3)
     {
         fprintf(stderr, "get %d input files instead of 2\n", argc - 1);
-        return 1;
-    }
-
-    FILE *fo = fopen(argv[2], "wb");
-    if (fo == NULL)
-    {
-        fprintf(stderr, "Cannot find file <%s>\n", argv[1]);
         return 1;
     }
 
@@ -156,114 +232,347 @@ int main(int argc, const char **argv)
         content_length = file_size;
     #endif
 
-    content_end = content_end + content_length;
 
-    printf("File size: %zu\n", content_length);
+
+    content_end = content + content_length;
+
+    
+    #ifdef DEBUG_INFO
+        printf("File size: %zu\n", content_length);
+    #endif
+
+    char *output_buffer;
+
+    #if defined(_WIN32)
+        HANDLE hOut = CreateFileA(
+            argv[2],
+            GENERIC_READ | GENERIC_WRITE,
+            0, // Exclusive read
+            NULL,
+            CREATE_ALWAYS,
+            FILE_ATTRIBUTE_NORMAL,
+            NULL
+        );
+        if (hOut == INVALID_HANDLE_VALUE)
+        {
+            printf("CreateFile error\n");
+            return 0;
+        }
+        size_t result_length = content_length * 3 + 64 * 1024;
+        unsigned sizeHi = result_length >> 32ULL;
+        unsigned sizeLow = result_length & 0xFFFFFFFFULL;
+        HANDLE hMapFile = CreateFileMapping(
+            hOut,
+            NULL,
+            PAGE_READWRITE,
+            sizeHi,
+            sizeLow,
+            NULL
+        );
+        if (hMapFile == INVALID_HANDLE_VALUE)
+        {
+            printf("CreateFileMapping error\n");
+            return 0;
+        }
+        LPVOID mapBaseAddress = MapViewOfFile(
+            hMapFile,
+            FILE_MAP_ALL_ACCESS,
+            0,
+            0,
+            0
+        );
+        if (mapBaseAddress == NULL)
+        {
+            printf("MapViewOfFile error\n");
+            return 0;
+        }
+        output_buffer = mapBaseAddress;
+    #else
+        FILE *fo = fopen(argv[2], "wb");
+        if (fo == NULL)
+        {
+            fprintf(stderr, "Cannot find file <%s>\n", argv[1]);
+            return 1;
+        }
+        output_buffer = malloc(content_length * 3);
+    #endif
+    
+    char *output_buffer_end = output_buffer;
+    
+
+
 
     /* 1. read lines */
     size_t index_length = 0;
     size_t index_alloc = 128;
-    char **index = malloc(sizeof(char *) * index_alloc);
+    struct MSD_array_t *index = malloc(sizeof(*index) * index_alloc);
     {
         char *s = content;
-        printf("%p < %p < %p\n", content, s, content_end);
         while (s < content_end)
         {
             if (index_length == index_alloc)
             {
                 index_alloc = index_alloc * 2;
-                char **new_ptr = realloc(index, sizeof(char *) * index_alloc);
+                void *new_ptr = realloc(index, sizeof(*index) * index_alloc);
                 if (new_ptr == NULL)
                 {
-                    for (size_t i = 0; i < index_length; ++i)
-                    {
-                        free(index[i]);
-                    }
                     free(index);
                     printf("NOT ENOUGTH MEMORY\n");
                     return 1;
                 }
                 index = new_ptr;
             }
-            if (!(index_length & 0xFFFF))
-            {
-                printf("read s[%zu]\n", index_length);
-            }
+            // printf("%d\n", __LINE__);
             char *res = s;
-            while (*s != '\r' && *s != '\n' && s < content_end)
-            {
-                s++;
-            }
-            // printf("%p < %p < %p\n", content, s, content_end);
+            // printf("%p / %p / %p\n", content, s, content_end);
+
+            s = next_newline(s, content_end);
+            // while (s < content_end && *s != '\r' && *s != '\n')
+            // {
+            //     s++;
+            // }
+            
+            // printf("%d\n", __LINE__);
             if (s >= content_end)
             {
                 if (s - res > 0)
                 {
-                    index[index_length] = malloc(s - res + 1);
-                    memcpy(index[index_length], res, s - res);
-                    index[index_length][s - res] = 0;
+                    index[index_length].s = malloc(s - res + 1);
+                    memcpy(index[index_length].s, res, s - res);
+                    index[index_length].s[s - res] = 0;
+                    index[index_length].e = index[index_length].s + (s - res);
                     index_length++;
                 }
                 break;
             }
-            *s++ = 0;
-            if (s < content_end && *s == '\n')
+
+
+            while (res < s &&
+                !(('a' <= *res && *res <= 'z') || ('A' <= *res && *res <= 'Z') || ('0' <= *res && *res <= '9'))
+            )
             {
-                *s++ = 0;
+                res++;
             }
+            
+            // printf("%d\n", __LINE__);
             if (s - res > 0)
             {
-                index[index_length++] = res;
+                index[index_length].s = res;
+                index[index_length].e = res + (s - res);
+                index_length++;
             }
+            // *s++ = 0;
+            // printf("%d\n", __LINE__);
+            /* skip starting commas */
+            // printf("%d\n", __LINE__);
+            s++;
+            if (s < content_end && *s == '\n')
+            {
+                // *s++ = 0;
+                s++;
+            }
+            // printf("%d\n", __LINE__);
         }
     }
+    struct MSD_array_t *ttmp = malloc(sizeof(*ttmp) * index_length);
+    // memcpy(index_bak, index, sizeof(*index_bak) * index_length);
 
-    printf("read %d lines.\n", (int)index_length);
+    #ifdef DEBUG_INFO
+        printf("read %d lines.\n", (int)index_length);
+        printf("INDEP PTR: %p\n", index);
 
-    printf("[0]%s\n", index[0]);
-    printf("[1]%s\n", index[1]);
-    printf("[2]%s\n", index[2]);
+        printf("[0]%*.*s\n", (int)(index[0].e - index[0].s), (int)(index[0].e - index[0].s), index[0].s);
+        printf("[1]%*.*s\n", (int)(index[1].e - index[1].s), (int)(index[1].e - index[1].s), index[1].s);
+        printf("[2]%*.*s\n", (int)(index[2].e - index[2].s), (int)(index[2].e - index[2].s), index[2].s);
+    #endif
 
     /* 1. alphabetic */
+    sort_forward(index, ttmp, index_length);
+    for (size_t i = 0; i < index_length; ++i)
     {
-        qsort(index, index_length, sizeof(*index), forward_cmp);
-        for (size_t i = 0; i < index_length; ++i)
-        {
-            fputs(index[i], fo);
-            putc('\n', fo);
-        }
+        /* insert to output_buffer */
+        memcpy(output_buffer_end, index[i].s, index[i].e - index[i].s);
+        output_buffer_end += index[i].e - index[i].s;
+        #ifdef _WIN32
+            *output_buffer_end++ = '\r';
+        #endif
+        *output_buffer_end++ = '\n';
     }
     /* 2. backwards alphabetic */
+    // memcpy(index, index_bak, sizeof(*index) * index_length);
+    sort_backward(index, ttmp, index_length);
+    for (size_t i = 0; i < index_length; ++i)
     {
-        qsort(index, index_length, sizeof(*index), backward_cmp);
-        for (size_t i = 0; i < index_length; ++i)
-        {
-            fputs(index[i], fo);
-            putc('\n', fo);
-        }
+        memcpy(output_buffer_end, index[i].s, index[i].e - index[i].s);
+        output_buffer_end += index[i].e - index[i].s;
+        #ifdef _WIN32
+            *output_buffer_end++ = '\r';
+        #endif
+        *output_buffer_end++ = '\n';
     }
 
     /* 3. copying */
-    FILE *fi = fopen(argv[1], "rb");
-    {
-        char c;
-        while ((c = getc(fi)) != EOF)
-        {
-            putc(c, fo);
-        }
-    }
+    #ifdef _WIN32
+        memcpy(output_buffer_end, content, content_length);
+    #else
+        fwrite(output_buffer, output_buffer_end - output_buffer, 1, fo);
+        fwrite(content, content_length, 1, fo);
+    #endif
 
     #ifdef _WIN32
         // Cleanup
         UnmapViewOfFile((LPCVOID)content);
+        UnmapViewOfFile((LPCVOID)output_buffer);
         CloseHandle(hMap);
+        CloseHandle(hMapFile);
         CloseHandle(hFile);
+        CloseHandle(hOut);
     #else
         free(content);
         close(fd);
+        fclose(fo);
     #endif
 
-    fclose(fo);
     
     return 0;
 }
+
+
+
+
+
+void forward_msd_fast_recurse(struct MSD_array_t *s, struct MSD_array_t *tmp, size_t letter, size_t length)
+{
+    size_t bs[128] = {};
+    /* create empty baskets */
+    /* count first letters */
+    for (size_t i = 0; i < length; ++i)
+    {
+        unsigned char res = 0;
+        if ((size_t)(s[i].e - s[i].s) > letter)
+        {
+            res = s[i].s[letter];
+        }
+        bs[res]++;
+    }
+    /* calculate offsets */
+    for (size_t i = 1; i < 128; ++i)
+    {
+        bs[i] += bs[i - 1];
+    }
+    /* sort elements */
+    for (size_t i = length - 1; i < length; --i)
+    {
+        unsigned char res = 0;
+        if ((size_t)(s[i].e - s[i].s) > letter)
+        {
+            res = s[i].s[letter];
+        }
+        bs[res]--;
+        tmp[bs[res]] = s[i];
+    }
+    /* copy back first group */
+    {
+        memcpy(s, tmp, sizeof(*s) * bs[1]);
+    }
+    /* call recursive sorts, if block */
+    for (size_t i = 1; i < 128; ++i)
+    {
+        size_t start = bs[i];
+        size_t end = (i + 1 == 128 ? length : bs[i + 1]);
+        if (end - start == 0)
+        { }
+        else if (end - start == 1)
+        {
+            s[start] = tmp[start];
+        }
+        else
+        {
+            forward_msd_fast_recurse(tmp + start, s + start, letter + 1, end - start);
+            memcpy(s + start, tmp + start, sizeof(*s) * (end - start));
+        }
+    }
+}
+
+
+void forward_msd_fast(struct MSD_array_t *index, struct MSD_array_t *tmp, size_t length)
+{
+    forward_msd_fast_recurse(index, tmp, 0, length);
+}
+
+
+
+
+
+
+void sort_forward(struct MSD_array_t *index, struct MSD_array_t *tmp, size_t index_length)
+{
+    forward_msd_fast(index, tmp, index_length);
+}
+
+
+
+void backward_msd_fast_recurse(struct MSD_array_t *s, struct MSD_array_t *tmp, size_t letter, size_t length)
+{
+    size_t bs[128] = {};
+    /* create empty baskets */
+    /* count first letters */
+    for (size_t i = 0; i < length; ++i)
+    {
+        unsigned char res = 0;
+        if (s[i].e - letter >= s[i].s)
+        {
+            res = s[i].e[-letter];
+        }
+        bs[res]++;
+    }
+    /* calculate offsets */
+    for (size_t i = 1; i < 128; ++i)
+    {
+        bs[i] += bs[i - 1];
+    }
+    /* sort elements */
+    for (size_t i = length - 1; i < length; --i)
+    {
+        unsigned char res = 0;
+        if (s[i].e - letter >= s[i].s)
+        {
+            res = s[i].e[-letter];
+        }
+        bs[res]--;
+        tmp[bs[res]] = s[i];
+    }
+    /* copy back first group */
+    {
+        memcpy(s, tmp, sizeof(*s) * bs[1]);
+    }
+    /* call recursive sorts, if block */
+    for (size_t i = 1; i < 128; ++i)
+    {
+        size_t start = bs[i];
+        size_t end = (i + 1 == 128 ? length : bs[i + 1]);
+        if (end - start == 0)
+        { }
+        else if (end - start == 1)
+        {
+            s[start] = tmp[start];
+        }
+        else
+        {
+            backward_msd_fast_recurse(tmp + start, s + start, letter + 1, end - start);
+            memcpy(s + start, tmp + start, sizeof(*s) * (end - start));
+        }
+    }
+}
+
+
+void backward_msd_fast(struct MSD_array_t *index, struct MSD_array_t *tmp, size_t length)
+{
+    backward_msd_fast_recurse(index, tmp, 1, length);
+}
+
+void sort_backward(struct MSD_array_t *index, struct MSD_array_t *tmp, size_t length)
+{
+    backward_msd_fast(index, tmp, length);
+}
+
