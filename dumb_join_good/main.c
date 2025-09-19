@@ -255,35 +255,43 @@ int main(int argc, const char **argv)
         );
         if (hOut == INVALID_HANDLE_VALUE)
         {
-            printf("CreateFile error\n");
+            printf("CreateFile error %ld\n", GetLastError());
             return 0;
         }
         size_t result_length = content_length * 3 + 64 * 1024;
+        // size_t min_size = GetLargePageMinimum();
+        // result_length += min_size - (result_length % min_size);
+        // printf("Min=%zu\n", min_size);
+        // printf("Res=%zu\n", result_length);
         unsigned sizeHi = result_length >> 32ULL;
         unsigned sizeLow = result_length & 0xFFFFFFFFULL;
         HANDLE hMapFile = CreateFileMapping(
             hOut,
             NULL,
-            PAGE_READWRITE,
+            PAGE_READWRITE
+            | SEC_COMMIT /* sec commit is enabled by default */
+            // | SEC_NOCACHE /* only slow down program */
+            // | SEC_LARGE_PAGES /* can't use it with file on disk? */
+            ,
             sizeHi,
             sizeLow,
             NULL
         );
         if (hMapFile == INVALID_HANDLE_VALUE)
         {
-            printf("CreateFileMapping error\n");
+            printf("CreateFileMapping error %ld\n", GetLastError());
             return 0;
         }
         LPVOID mapBaseAddress = MapViewOfFile(
             hMapFile,
-            FILE_MAP_ALL_ACCESS,
+            FILE_MAP_ALL_ACCESS, // | FILE_MAP_LARGE_PAGES,
             0,
             0,
             0
         );
         if (mapBaseAddress == NULL)
         {
-            printf("MapViewOfFile error\n");
+            printf("MapViewOfFile error %ld\n", GetLastError());
             return 0;
         }
         output_buffer = mapBaseAddress;
@@ -322,56 +330,50 @@ int main(int argc, const char **argv)
                 }
                 index = new_ptr;
             }
-            // printf("%d\n", __LINE__);
             char *res = s;
-            // printf("%p / %p / %p\n", content, s, content_end);
 
             s = next_newline(s, content_end);
-            // while (s < content_end && *s != '\r' && *s != '\n')
-            // {
-            //     s++;
-            // }
             
-            // printf("%d\n", __LINE__);
             if (s >= content_end)
             {
-                if (s - res > 0)
-                {
-                    index[index_length].s = malloc(s - res + 1);
-                    memcpy(index[index_length].s, res, s - res);
-                    index[index_length].s[s - res] = 0;
-                    index[index_length].e = index[index_length].s + (s - res);
-                    index_length++;
-                }
-                break;
+                s = content_end;
             }
 
-
+            char *end = s;
             while (res < s &&
                 !(('a' <= *res && *res <= 'z') || ('A' <= *res && *res <= 'Z') || ('0' <= *res && *res <= '9'))
             )
             {
                 res++;
             }
+            while (end > res &&
+                !(('a' <= *end && *end <= 'z') || ('A' <= *end && *end <= 'Z') || ('0' <= *end && *end <= '9'))
+            )
+            {
+                end--;
+            }
+            if (end != res)
+            {
+                end++;
+            }
             
-            // printf("%d\n", __LINE__);
-            if (s - res > 0)
+            if (end - res > 0)
             {
                 index[index_length].s = res;
-                index[index_length].e = res + (s - res);
+                index[index_length].e = end;
                 index_length++;
             }
-            // *s++ = 0;
-            // printf("%d\n", __LINE__);
             /* skip starting commas */
-            // printf("%d\n", __LINE__);
-            s++;
-            if (s < content_end && *s == '\n')
+            if (s < content_end)
             {
                 // *s++ = 0;
                 s++;
+                if (s < content_end && *s == '\n')
+                {
+                    // *s++ = 0;
+                    s++;
+                }
             }
-            // printf("%d\n", __LINE__);
         }
     }
     struct MSD_array_t *ttmp = malloc(sizeof(*ttmp) * index_length);
