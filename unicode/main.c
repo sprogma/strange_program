@@ -3,6 +3,7 @@
 #include "malloc.h"
 #include "search.h"
 #include "string.h"
+#include "assert.h"
 #include "sys/stat.h"
 #include "grapheme.h"
 
@@ -25,7 +26,7 @@ int forward_strcoll_cmp(const void *a, const void *b)
 
 char *next_utf8_token(char *s)
 {
-    if (*s == 0)
+    if (*s == '\0')
     {
         return s;
     }
@@ -33,6 +34,60 @@ char *next_utf8_token(char *s)
     size_t length = grapheme_next_character_break_utf8(s, 1024 * 1024);
     /* using libgrapheme */
     return s + length;
+}
+
+
+int fill_line_array(char ***plines, size_t *length, char *content)
+{
+    char *ptr = content;
+    char *line_begin = content;
+    size_t lines_id = 0;
+    size_t lines_alloc = 128;
+    char **lines = *plines = malloc(sizeof(*lines) * lines_alloc);
+    if (lines == NULL)
+    {
+        return 2;
+    }
+    while (1)
+    {
+        if (lines_id == lines_alloc)
+        {
+            lines_alloc *= 2;
+            lines = realloc(lines, sizeof(*lines) * lines_alloc);
+            if (lines == NULL)
+            {
+                free(content);
+                free(*plines);
+                return 2;
+            }
+            *plines = lines;
+        }
+        char *next = next_utf8_token(ptr);
+        if (next == ptr || (next - ptr == 1 && *ptr == '\n') || (next - ptr == 2 && *ptr == '\r' && ptr[1] == '\n'))
+        {
+            lines[lines_id++] = line_begin;
+            *ptr = '\0';
+            if (next == ptr)
+            {
+                break;
+            }
+            ptr = next;
+            line_begin = ptr;
+        }
+        else
+        {
+            ptr = next;
+        }
+    }
+    
+    *length = lines_id;
+
+    for (size_t i = 0; i < lines_id; ++i)
+    {
+        assert(lines[i] != NULL);
+    }
+    
+    return 0;
 }
 
 
@@ -58,57 +113,9 @@ int read_file_as_lines(const char *filename, char ***plines, size_t *length)
     }
     content[size] = 0;
     fclose(f);
-    /* tokenize */
-    char *content_end = content_end + size;
-    char *ptr = content;
-    char *line_begin = content;
-    size_t lines_id = 0;
-    size_t lines_alloc = 128;
-    char **lines = *plines = malloc(sizeof(*lines) * lines_alloc);
-    if (lines == NULL)
-    {
-        return 2;
-    }
-    while (1)
-    {
-        if (lines_id == lines_alloc)
-        {
-            lines_alloc *= 2;
-            lines = realloc(lines, sizeof(*lines) * lines_alloc);
-            if (lines == NULL)
-            {
-                free(content);
-                free(*plines);
-                return 2;
-            }
-            *plines = lines;
-        }
-        char *next = next_utf8_token(ptr);
-        // printf("%p %p\n", next, ptr);
-        // printf("GET CHAR: %d\n", *ptr);
-        // if (next == ptr || (next - ptr == 1 && (*ptr == '\n' || *ptr == '\r')))
-        if (next == ptr || (next - ptr == 1 && *ptr == '\n') || (next - ptr == 2 && *ptr == '\r' && ptr[1] == '\n'))
-        {
-            lines[lines_id++] = line_begin;
-            *ptr = 0;
-            if (next == ptr)
-            {
-                break;
-            }
-            // if (*ptr == '\r' && ptr[1] == '\n')
-            // {
-            //     ptr++;
-            // }
-            // ptr++;
-            ptr = next;
-            line_begin = ptr;
-        }
-        else
-        {
-            ptr = next;
-        }
-    }
-    *length = lines_id;
+    
+    fill_line_array(plines, length, content);
+    
     return 0;
 }
 
@@ -144,6 +151,19 @@ void reverse_string(char *s)
 }
 
 
+void print_lines(char **lines, size_t length, FILE *file)
+{
+    for (size_t i = 0; i < length; ++i)
+    {
+        fputs(lines[i], file);
+        #ifdef _WIN32
+            fputc('\r', file);
+        #endif
+        fputc('\n', file);
+    }
+}
+
+
 int main(int argc, const char **argv)
 {
     if (argc != 3)
@@ -151,6 +171,8 @@ int main(int argc, const char **argv)
         fprintf(stderr, "get %d input files instead of 2\n", argc - 1);
         return 1;
     }
+    
+    
     FILE *fo = fopen(argv[2], "wb");
     if (fo == NULL)
     {
@@ -173,41 +195,31 @@ int main(int argc, const char **argv)
     
 
     qsort(lines, length, sizeof(*lines), forward_strcoll_cmp);
-    for (size_t i = 0; i < length; ++i)
-    {
-        fputs(lines[i], fo);
-        #ifdef _WIN32
-            fputc('\r', fo);
-        #endif
-        fputc('\n', fo);
-    }
+    
+    print_lines(lines, length, fo);
 
-    /* reverse all strings */
+
+
     for (size_t i = 0; i < length; ++i)
     {
         reverse_string(lines[i]);
     }
 
     qsort(lines, length, sizeof(*lines), forward_strcoll_cmp);
+
     for (size_t i = 0; i < length; ++i)
     {
         reverse_string(lines[i]);
-        fputs(lines[i], fo);
-        #ifdef _WIN32
-            fputc('\r', fo);
-        #endif
-        fputc('\n', fo);
     }
+
+    print_lines(lines, length, fo);
+
+
+
     
     qsort(lines, length, sizeof(*lines), compare_pointers);
-    for (size_t i = 0; i < length; ++i)
-    {
-        fputs(lines[i], fo);
-        #ifdef _WIN32
-            fputc('\r', fo);
-        #endif
-        fputc('\n', fo);
-    }
+
+    print_lines(lines, length, fo);
 
 
     fclose(fo);

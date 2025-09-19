@@ -81,6 +81,7 @@ int free_write_buffer(struct output_buffer_t *buffer, size_t bytes_to_write)
         CloseHandle(buffer->hFile);
     #else
         #error Error: check this code
+        fwrite(buffer->buffer, bytes_to_write, 1, fo);
         free(buffer->buffer);
         close(buffer->file);
     #endif

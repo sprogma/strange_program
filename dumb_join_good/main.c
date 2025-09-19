@@ -65,13 +65,16 @@ int main(int argc, const char **argv)
         *output_buffer_end++ = '\n';
     }
 
+
+
     /* 3. copying */
     #ifdef _WIN32
         memcpy(output_buffer_end, content, content_length);
     #else
-        fwrite(output_buffer, output_buffer_end - output_buffer, 1, fo);
-        fwrite(content, content_length, 1, fo);
+        memcpy(output_buffer_end, content, content_length);
     #endif
+
+    
 
     free_read_buffer(&read_buffer);
     free_write_buffer(&write_buffer, output_buffer_end - output_buffer);
