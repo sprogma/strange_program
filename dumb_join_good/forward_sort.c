@@ -35,7 +35,7 @@ void forward_msd_fast_recurse(struct MSD_array_t *s, struct MSD_array_t *tmp, si
         bs[res]--;
         tmp[bs[res]] = s[i];
     }
-    /* copy back first group */
+    /* copy back first group, it is ended strings */
     {
         memcpy(s, tmp, sizeof(*s) * bs[1]);
     }

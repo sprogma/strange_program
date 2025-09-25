@@ -20,10 +20,13 @@ int create_write_buffer(struct output_buffer_t *buffer, const char *filename, ch
             printf("CreateFile error %ld\n", GetLastError());
             return 0;
         }
+
+        // // Large pages doen't supported for File Maps
         // size_t min_size = GetLargePageMinimum();
         // buffer_length += min_size - (result_length % min_size);
         // printf("Min=%zu\n", min_size);
         // printf("Res=%zu\n", buffer_length);
+        
         LARGE_INTEGER buffer_size = {.QuadPart = buffer_length};
         HANDLE hMapFile = CreateFileMapping(
             buffer->hFile,

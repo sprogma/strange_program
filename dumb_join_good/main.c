@@ -9,6 +9,22 @@
 #include "main.h"
 
 
+char *store_sorted_result(struct MSD_array_t *index, size_t index_length, char *output_buffer_end)
+{
+    for (size_t i = 0; i < index_length; ++i)
+    {
+        /* insert to output_buffer */
+        memcpy(output_buffer_end, index[i].s, index[i].e - index[i].s);
+        output_buffer_end += index[i].e - index[i].s;
+        #ifdef _WIN32
+            *output_buffer_end++ = '\r';
+        #endif
+        *output_buffer_end++ = '\n';
+    }
+    return output_buffer_end;
+}
+
+
 int main(int argc, const char **argv)
 {
     if (argc != 3)
@@ -30,7 +46,6 @@ int main(int argc, const char **argv)
     split_on_lines(&index, &index_length, content, content_length);
     char *output_buffer_end = output_buffer;
     
-    struct MSD_array_t *ttmp = malloc(sizeof(*ttmp) * index_length);
 
     #ifdef DEBUG_INFO
         printf("read %d lines.\n", (int)index_length);
@@ -41,40 +56,23 @@ int main(int argc, const char **argv)
         printf("[2]%*.*s\n", (int)(index[2].e - index[2].s), (int)(index[2].e - index[2].s), index[2].s);
     #endif
 
+    
+    struct MSD_array_t *ttmp = malloc(sizeof(*ttmp) * index_length);
+
     /* 1. alphabetic */
     sort_forward(index, ttmp, index_length);
-    for (size_t i = 0; i < index_length; ++i)
-    {
-        /* insert to output_buffer */
-        memcpy(output_buffer_end, index[i].s, index[i].e - index[i].s);
-        output_buffer_end += index[i].e - index[i].s;
-        #ifdef _WIN32
-            *output_buffer_end++ = '\r';
-        #endif
-        *output_buffer_end++ = '\n';
-    }
+    output_buffer_end = store_sorted_result(index, index_length, output_buffer_end);
+    
     /* 2. backwards alphabetic */
     sort_backward(index, ttmp, index_length);
-    for (size_t i = 0; i < index_length; ++i)
-    {
-        memcpy(output_buffer_end, index[i].s, index[i].e - index[i].s);
-        output_buffer_end += index[i].e - index[i].s;
-        #ifdef _WIN32
-            *output_buffer_end++ = '\r';
-        #endif
-        *output_buffer_end++ = '\n';
-    }
-
-
+    output_buffer_end = store_sorted_result(index, index_length, output_buffer_end);
 
     /* 3. copying */
     #ifdef _WIN32
         memcpy(output_buffer_end, content, content_length);
     #else
         memcpy(output_buffer_end, content, content_length);
-    #endif
-
-    
+    #endif    
 
     free_read_buffer(&read_buffer);
     free_write_buffer(&write_buffer, output_buffer_end - output_buffer);

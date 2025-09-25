@@ -2,6 +2,9 @@
 
 #include "main.h"
 
+/* 
+ * find next \n [and \r too, if compiled on windows, return it's position]
+ */
 #define ALIGN_PAD64(buf) ((64 - (size_t)(buf) % 64) % 64)
 char *next_newline(char *str, char *end)
 {

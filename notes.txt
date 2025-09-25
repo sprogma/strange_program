@@ -2,8 +2,6 @@
 to see disk speed run:
 [under root]
 winsat disk -drive C
- 
-
 
 unicode project depends on https://github.com/FRIGN/libgrapheme
 [it can be builded on windows]
