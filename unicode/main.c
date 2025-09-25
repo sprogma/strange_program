@@ -7,6 +7,7 @@
 #include "sys/stat.h"
 #include "grapheme.h"
 
+#define MAX_GRAPHEME_CLUSTER_LENGTH (1024 * 1024)
 
 int compare_pointers(const void *a, const void *b)
 {
@@ -30,9 +31,10 @@ char *next_utf8_token(char *s)
     {
         return s;
     }
-    /* 1024 * 1024 is 'infinity' */
-    size_t length = grapheme_next_character_break_utf8(s, 1024 * 1024);
+    
     /* using libgrapheme */
+    size_t length = grapheme_next_character_break_utf8(s, MAX_GRAPHEME_CLUSTER_LENGTH);
+    
     return s + length;
 }
 
@@ -63,7 +65,10 @@ int fill_line_array(char ***plines, size_t *length, char *content)
             *plines = lines;
         }
         char *next = next_utf8_token(ptr);
-        if (next == ptr || (next - ptr == 1 && *ptr == '\n') || (next - ptr == 2 && *ptr == '\r' && ptr[1] == '\n'))
+        /* if it is file end, or it is \n or it is \r\n */
+        if ((next == ptr) || 
+            (next - ptr == 1 && *ptr == '\n') || 
+            (next - ptr == 2 && *ptr == '\r' && ptr[1] == '\n'))
         {
             lines[lines_id++] = line_begin;
             *ptr = '\0';
